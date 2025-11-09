@@ -3,11 +3,11 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = "alice@example.com";
-  const plain = "Alice"; // change to desired password
-  const name = "Alice";
+  const email = "test@test.com";
+  const plain = "test"; // change to desired password
+  const name = "test";
   const phone = null; // or set phone string
-  const role = "CLIENT"; // adjust role if needed
+  const role = "ADMIN"; // adjust role if needed
 
   const existing = await prisma.users.findFirst({ where: { email } });
   if (existing) {

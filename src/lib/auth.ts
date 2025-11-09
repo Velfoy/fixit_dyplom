@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       // note: include `req` param to match expected signature
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         console.log("authorize called", { credentials });
         if (!credentials?.email || !credentials?.password) {
           console.log("missing credentials");
@@ -58,10 +58,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-
-  // ...existing code...
-  pages: { signIn: "/login" },
+  pages: { signIn: "/auth/login" },
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
 };
-// ...existing code...

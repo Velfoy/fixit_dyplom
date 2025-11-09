@@ -1,9 +1,8 @@
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import ProtectedLayout from "@/components/layouts/ProtectedLayout";
+import { redirect } from "next/navigation";
 
-export default async function Layout({
+export default async function PrivateLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -11,5 +10,15 @@ export default async function Layout({
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  return <ProtectedLayout session={session}>{children}</ProtectedLayout>;
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-gray-900 text-white p-4 flex justify-between">
+        <h2>{session.user.role?.toUpperCase()} PANEL</h2>
+        <form action="/api/auth/signout?callbackUrl=/" method="post">
+          <button className="bg-red-600 px-3 py-1 rounded">Logout</button>
+        </form>
+      </header>
+      <main className="flex-1 p-6">{children}</main>
+    </div>
+  );
 }

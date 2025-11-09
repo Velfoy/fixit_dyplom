@@ -1,60 +1,45 @@
 "use client";
 
+import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const waitForSession = async (tries = 12, delay = 250) => {
-    for (let i = 0; i < tries; i++) {
-      const s = await getSession();
-      if (s?.user) return s;
-      await new Promise((r) => setTimeout(r, delay));
-    }
-    return null;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-
-    // IMPORTANT: prevent built-in redirect and provide callbackUrl (cast to any for TS)
-    await signIn("credentials", { email, password }, {
+    const result = await signIn("credentials", {
+      email,
+      password,
       redirect: false,
-      callbackUrl: "/client/dashboard",
-    } as any);
-
-    // wait for server session to be created (avoids race with server redirect)
-    const session = await waitForSession();
-    if (!session?.user) {
-      setError("No response from auth.");
-      return;
-    }
-
-    const role = (session.user as any)?.role || "client";
-    router.replace(`/${String(role).toLowerCase()}/dashboard`);
-  };
+    });
+    if (result?.ok) router.push("/redirect");
+  }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      <input
-        name="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        name="password"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button type="submit">Sign in</button>
-      {error && <div>{error}</div>}
-    </form>
+    <main className="flex flex-col items-center justify-center h-screen">
+      <form onSubmit={handleLogin} className="flex flex-col w-64 gap-3">
+        <input
+          type="email"
+          placeholder="Email"
+          className="border p-2 rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="border p-2 rounded"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button type="submit" className="bg-blue-600 text-white py-2 rounded">
+          Log in
+        </button>
+      </form>
+    </main>
   );
 }
