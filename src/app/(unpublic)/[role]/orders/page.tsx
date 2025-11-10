@@ -1,7 +1,12 @@
 import { authorizePage } from "@/lib/authorize";
 
 export default async function OrdersPage() {
-  const session = await authorizePage(["client"]);
+  const session = await authorizePage([
+    "client",
+    "admin",
+    "mechanic",
+    "warehouse",
+  ]);
 
   return (
     <div className="p-6">

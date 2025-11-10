@@ -28,6 +28,9 @@ export default async function HomePage() {
           >
             Go to Dashboard
           </Link>
+          <form action="/api/auth/signout?callbackUrl=/" method="post">
+            <button className="bg-red-600 px-3 py-1 rounded">Logout</button>
+          </form>
         </div>
       )}
     </main>

@@ -24,6 +24,7 @@ export const config = {
     "/admin/:path*",
     "/client/:path*",
     "/mechanik/:path*",
+    "/warehouse/:path*",
     "/shared/:path*",
   ],
 };

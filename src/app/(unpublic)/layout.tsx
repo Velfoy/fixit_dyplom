@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Sidebar from "@/components/layouts/Sidebar";
 
 export default async function PrivateLayout({
   children,
@@ -10,8 +11,11 @@ export default async function PrivateLayout({
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
+  const role = session?.user?.role?.toLowerCase();
+
   return (
     <div className="min-h-screen flex flex-col">
+      <Sidebar role={role}></Sidebar>
       <header className="bg-gray-900 text-white p-4 flex justify-between">
         <h2>{session.user.role?.toUpperCase()} PANEL</h2>
         <form action="/api/auth/signout?callbackUrl=/" method="post">
