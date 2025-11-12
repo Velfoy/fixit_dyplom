@@ -29,10 +29,9 @@ export const routeAccessMatrix: Record<string, string[]> = {
     "settings",
     "profile",
   ],
-  warehouse: ["dashboard", "orders", "invoices", "info", "settings", "profile"],
-  receptionist: [
+  warehouse: [
     "dashboard",
-    "orders",
+    "warehouse",
     "invoices",
     "info",
     "settings",

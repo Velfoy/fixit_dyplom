@@ -37,10 +37,10 @@ const routeAccessMatrix: Record<string, string[]> = {
     "settings",
     "profile",
   ],
-  warehouse: ["dashboard", "orders", "invoices", "info", "settings", "profile"],
-  receptionist: [
+  warehouse: [
     "dashboard",
     "orders",
+    "warehouse",
     "invoices",
     "info",
     "settings",
@@ -73,33 +73,45 @@ export async function middleware(req: NextRequest) {
 
     const pathname = req.nextUrl.pathname;
 
-    // Split path into segments and determine role and page correctly.
+    // Split path into segments and determine role and all requested pages
     // Examples:
     //  /client/dashboard      -> segments = ["client","dashboard"]
+    //  /admin/warehouse/info  -> segments = ["admin","warehouse","info"]
     //  /unpublic/client/info  -> segments = ["unpublic","client","info"]
     const segments = pathname.split("/").filter(Boolean);
     let roleInUrl: string | null = null;
-    let pageName: string | null = null;
+    let pageSegments: string[] = [];
 
+    // Detect if first segment is a valid role
+    const validRoles = Object.keys(routeAccessMatrix);
     if (segments.length > 0) {
-      if (segments[0] === "unpublic") {
-        roleInUrl = segments[1] ? segments[1].toLowerCase() : null;
-        pageName = segments[2] ? segments[2].toLowerCase() : null;
+      if (
+        segments[0] === "unpublic" &&
+        segments[1] &&
+        validRoles.includes(segments[1].toLowerCase())
+      ) {
+        roleInUrl = segments[1].toLowerCase();
+        pageSegments = segments.slice(2).map((s) => s.toLowerCase());
+      } else if (validRoles.includes(segments[0].toLowerCase())) {
+        roleInUrl = segments[0].toLowerCase();
+        pageSegments = segments.slice(1).map((s) => s.toLowerCase());
       } else {
-        roleInUrl = segments[0] ? segments[0].toLowerCase() : null;
-        pageName = segments[1] ? segments[1].toLowerCase() : null;
+        // If first segment is not a valid role, treat as public or invalid route
+        roleInUrl = null;
+        pageSegments = segments.map((s) => s.toLowerCase());
       }
     }
 
-    if (roleInUrl && !userRole) {
-      // user not authenticated but trying to access role area -> send to login
-      const loginUrl = new URL(`/login`, req.nextUrl.origin);
-      return NextResponse.redirect(loginUrl);
-    }
+    if (roleInUrl && validRoles.includes(roleInUrl)) {
+      if (!userRole) {
+        // user not authenticated but trying to access role area -> send to login
+        const loginUrl = new URL(`/login`, req.nextUrl.origin);
+        return NextResponse.redirect(loginUrl);
+      }
 
-    if (roleInUrl && userRole) {
       // if user tries to access a different role's route, redirect to their role
-      if (roleInUrl !== userRole && roleInUrl !== "unpublic") {
+      if (roleInUrl !== userRole) {
+        // Always redirect to dashboard, never to /{userRole} or /CLIENT
         const redirectUrl = new URL(
           `/${userRole}/dashboard`,
           req.nextUrl.origin
@@ -107,9 +119,9 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(redirectUrl);
       }
 
-      // if pageName is provided, check per-route access
-      if (pageName) {
-        if (!isRouteAllowed(userRole, pageName)) {
+      // check all page segments for access
+      for (const seg of pageSegments) {
+        if (!isRouteAllowed(userRole, seg)) {
           const redirectUrl = new URL(
             `/${userRole}/dashboard`,
             req.nextUrl.origin

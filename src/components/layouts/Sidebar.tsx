@@ -15,7 +15,9 @@ const Sidebar: React.FC<SidebarProps> = ({ role }: SidebarProps) => {
               <a href={`/${role}/users`}>Users</a>
             </li>
           )}
-          {(role === "admin" || role === "mechanic") && (
+          {(role === "admin" ||
+            role === "mechanic" ||
+            role === "warehouse") && (
             <li>
               <a href={`/${role}/warehouse`}>Warehouse</a>
             </li>

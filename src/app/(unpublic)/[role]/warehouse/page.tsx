@@ -1,8 +1,8 @@
 import React from "react";
-import { authorizeRoute } from "@/lib/authorize";
+import { authorizePage } from "@/lib/authorize";
 
 export default async function Warehouse() {
-  await authorizeRoute("warehouse");
+  await authorizePage(["warehouse", "mechanic", "admin"]);
 
   return <div>Warehouse</div>;
 }

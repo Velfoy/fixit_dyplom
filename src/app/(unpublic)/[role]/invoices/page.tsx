@@ -1,6 +1,7 @@
 import React from "react";
-
-const Invoices = () => {
+import { authorizePage } from "@/lib/authorize";
+const Invoices = async () => {
+  await authorizePage(["warehouse", "client", "mechanic", "admin"]);
   return <div>Invoices</div>;
 };
 
