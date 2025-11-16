@@ -1,0 +1,43 @@
+/* Whole page layout */
+.main-layout {
+  display: flex; /* Sidebar + content side by side */
+  min-height: 100vh; /* Full viewport height */
+}
+
+/* Right side: header + main stacked vertically */
+.content-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header (replaces bg-gray-900, flex, etc.) */
+.page-header {
+  background: #111827; /* similar to Tailwind bg-gray-900 */
+  color: #ffffff;
+  padding: 16px; /* like p-4 */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Logout button */
+.logout-btn {
+  background: #dc2626; /* similar to bg-red-600 */
+  color: #ffffff;
+  border: none;
+  padding: 4px 12px; /* px-3 py-1 */
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  opacity: 0.9;
+}
+
+/* Main content area */
+.page-main {
+  flex: 1;
+  padding: 24px; /* like p-6 */
+  overflow: auto;
+}
