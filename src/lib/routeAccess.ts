@@ -1,7 +1,7 @@
 export const routeAccessMatrix: Record<string, string[]> = {
   admin: [
     "dashboard",
-    "users",
+    "customers",
     "warehouse",
     "orders",
     "cars",

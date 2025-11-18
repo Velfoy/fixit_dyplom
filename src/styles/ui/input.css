@@ -23,6 +23,4 @@
 
 .base-input:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(173, 4, 4, 0.45);
-  background: #070a1a;
 }

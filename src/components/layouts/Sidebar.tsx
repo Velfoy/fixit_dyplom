@@ -37,9 +37,9 @@ const Sidebar: React.FC<SidebarProps> = ({ role }: SidebarProps) => {
 
       {/* Admin-only */}
       {role === "admin" && (
-        <a href={`/${role}/users`} className="sidebar-btn">
+        <a href={`/${role}/customers`} className="sidebar-btn">
           <Users className="icon" />
-          <span className="sidebar-text">Users</span>
+          <span className="sidebar-text">Customers</span>
         </a>
       )}
 

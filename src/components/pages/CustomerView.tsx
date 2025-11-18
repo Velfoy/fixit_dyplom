@@ -1,28 +1,17 @@
-// import { authorizePage } from "@/lib/authorize";
-// import "../../../../styles/users.css";
-
-// export default async function UsersPage() {
-//   const session = await authorizePage(["admin"]);
-
-//   return (
-//     <div className="p-6">
-//       <h1 className="text-2xl font-bold">User Management</h1>
-//       <p>Welcome, {session.user.name}! Only admins can view this page.</p>
-//     </div>
-//   );
-// }
 "use client";
 
-import { useState } from "react";
-import { Card } from "../../../../components/ui/card";
-import { Button } from "../../../../components/ui/button";
-import { Input } from "../../../../components/ui/input";
+import { useState, FormEvent } from "react";
+import { Card } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "../../../../components/ui/dialog";
+} from "../../components/ui/dialog";
+
 import {
   Search,
   Plus,
@@ -35,14 +24,31 @@ import {
   Trash2,
 } from "lucide-react";
 
-import "../../../../styles/users.css";
+import "../../styles/users.css";
 
-export default function CustomersView() {
+type CustomerStatus = "active" | "vip" | "inactive";
+
+type Customer = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  cars: { model: string; year: number; plate: string }[];
+  totalOrders: number;
+  totalSpent: number;
+  lastVisit: string;
+  memberSince: string;
+  status: CustomerStatus;
+};
+
+const formatMoney = (value: number) =>
+  value.toLocaleString("en-US", { minimumFractionDigits: 0 });
+
+export default function CustomersView({ session }: { session: any }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
-  const [showAddCustomer, setShowAddCustomer] = useState(false);
 
-  const customers = [
+  const [customers, setCustomers] = useState<Customer[]>([
     {
       id: 1,
       name: "John Smith",
@@ -111,7 +117,30 @@ export default function CustomersView() {
       memberSince: "2024-06-12",
       status: "inactive",
     },
-  ];
+  ]);
+
+  const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // если null — режим "Add", если id — режим "Edit"
+  const [editingCustomerId, setEditingCustomerId] = useState<number | null>(
+    null
+  );
+
+  const [newCustomer, setNewCustomer] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    status: CustomerStatus;
+  }>({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    status: "active",
+  });
 
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -122,7 +151,7 @@ export default function CustomersView() {
 
   const selectedCustomerData = customers.find((c) => c.id === selectedCustomer);
 
-  const getStatusBadge = (status: string) => {
+  function getStatusBadge(status: CustomerStatus) {
     switch (status) {
       case "active":
         return (
@@ -134,10 +163,120 @@ export default function CustomersView() {
         return (
           <span className="status-badge status-badge--inactive">Inactive</span>
         );
-      default:
-        return null;
     }
-  };
+  }
+
+  function resetForm() {
+    setNewCustomer({
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      status: "active",
+    });
+    setEditingCustomerId(null);
+  }
+
+  function openAddModal() {
+    resetForm();
+    setShowAddCustomer(true);
+  }
+
+  function openEditModal(customer: Customer) {
+    setEditingCustomerId(customer.id);
+    setNewCustomer({
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address,
+      status: customer.status,
+    });
+    setSelectedCustomer(null);
+    setShowAddCustomer(true);
+  }
+
+  async function handleSaveCustomer(e: FormEvent) {
+    e.preventDefault();
+    if (!newCustomer.name.trim()) return;
+
+    try {
+      setIsSubmitting(true);
+
+      // === EDIT MODE ===
+      if (editingCustomerId !== null) {
+        // если есть бэк:
+        // await fetch(`/api/customers/${editingCustomerId}`, {
+        //   method: "PUT",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify(newCustomer),
+        // });
+
+        setCustomers((prev) =>
+          prev.map((c) =>
+            c.id === editingCustomerId
+              ? {
+                  ...c,
+                  name: newCustomer.name,
+                  email: newCustomer.email,
+                  phone: newCustomer.phone,
+                  address: newCustomer.address,
+                  status: newCustomer.status,
+                }
+              : c
+          )
+        );
+      } else {
+        // === ADD MODE ===
+        const res = await fetch("/api/customers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newCustomer),
+        });
+
+        let created = null;
+        if (res.ok) created = await res.json();
+
+        const newId =
+          created?.id ?? (customers[customers.length - 1]?.id ?? 0) + 1;
+
+        const newEntry: Customer = {
+          id: newId,
+          name: newCustomer.name,
+          email: newCustomer.email,
+          phone: newCustomer.phone,
+          address: newCustomer.address,
+          status: newCustomer.status,
+          cars: [],
+          totalOrders: 0,
+          totalSpent: 0,
+          lastVisit: new Date().toISOString().slice(0, 10),
+          memberSince: new Date().toISOString().slice(0, 10),
+        };
+
+        setCustomers((prev) => [...prev, newEntry]);
+      }
+
+      setShowAddCustomer(false);
+      resetForm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleDeleteCustomer(id: number) {
+    // если есть бэк: await fetch(`/api/customers/${id}`, { method: "DELETE" });
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
+    if (selectedCustomer === id) {
+      setSelectedCustomer(null);
+    }
+  }
+
+  function handleViewOrders(customer: Customer) {
+    // тут потом можешь сделать router.push(`/admin/orders?customerId=${customer.id}`)
+    alert(
+      `Here you could show orders for ${customer.name} (id: ${customer.id})`
+    );
+  }
 
   return (
     <div className="customers-view">
@@ -149,10 +288,8 @@ export default function CustomersView() {
             Manage and track customer information
           </p>
         </div>
-        <Button
-          onClick={() => setShowAddCustomer(true)}
-          className="add-customer-btn-override"
-        >
+
+        <Button onClick={openAddModal} className="add-customer-btn-override">
           <Plus className="icon-sm" />
           <span>Add Customer</span>
         </Button>
@@ -162,7 +299,7 @@ export default function CustomersView() {
       <div className="customers-stats-grid">
         <Card className="stats-card">
           <div className="stats-card-inner">
-            <div className="stats-icon stats-icon--blue">
+            <div className="stats-icon">
               <Car className="icon-md" />
             </div>
             <div>
@@ -174,15 +311,12 @@ export default function CustomersView() {
 
         <Card className="stats-card">
           <div className="stats-card-inner">
-            <div className="stats-icon stats-icon--green">
+            <div className="stats-icon">
               <DollarSign className="icon-md" />
             </div>
             <div>
               <p className="stats-value">
-                $
-                {customers
-                  .reduce((sum, c) => sum + c.totalSpent, 0)
-                  .toLocaleString()}
+                ${formatMoney(customers.reduce((s, c) => s + c.totalSpent, 0))}
               </p>
               <p className="stats-label">Total Revenue</p>
             </div>
@@ -191,12 +325,12 @@ export default function CustomersView() {
 
         <Card className="stats-card">
           <div className="stats-card-inner">
-            <div className="stats-icon stats-icon--purple">
+            <div className="stats-icon">
               <Car className="icon-md" />
             </div>
             <div>
               <p className="stats-value">
-                {customers.reduce((sum, c) => sum + c.cars.length, 0)}
+                {customers.reduce((s, c) => s + c.cars.length, 0)}
               </p>
               <p className="stats-label">Total Vehicles</p>
             </div>
@@ -205,12 +339,12 @@ export default function CustomersView() {
 
         <Card className="stats-card">
           <div className="stats-card-inner">
-            <div className="stats-icon stats-icon--orange">
+            <div className="stats-icon">
               <Calendar className="icon-md" />
             </div>
             <div>
               <p className="stats-value">
-                {customers.reduce((sum, c) => sum + c.totalOrders, 0)}
+                {customers.reduce((s, c) => s + c.totalOrders, 0)}
               </p>
               <p className="stats-label">Total Orders</p>
             </div>
@@ -255,6 +389,7 @@ export default function CustomersView() {
                     <h3 className="customer-name">{customer.name}</h3>
                     {getStatusBadge(customer.status)}
                   </div>
+
                   <div className="customer-meta">
                     <span className="customer-meta-item">
                       <Mail className="icon-xs" />
@@ -273,7 +408,7 @@ export default function CustomersView() {
 
                 <div className="customer-total">
                   <p className="customer-total-amount">
-                    ${customer.totalSpent.toLocaleString()}
+                    ${formatMoney(customer.totalSpent)}
                   </p>
                   <p className="customer-total-orders">
                     {customer.totalOrders} orders
@@ -281,10 +416,23 @@ export default function CustomersView() {
                 </div>
 
                 <div className="customer-actions">
-                  <button className="icon-btn icon-btn--edit">
+                  <button
+                    className="icon-btn icon-btn--edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditModal(customer);
+                    }}
+                  >
                     <Edit className="icon-sm" />
                   </button>
-                  <button className="icon-btn icon-btn--delete">
+
+                  <button
+                    className="icon-btn icon-btn--delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCustomer(customer.id);
+                    }}
+                  >
                     <Trash2 className="icon-sm icon-sm--red" />
                   </button>
                 </div>
@@ -294,7 +442,7 @@ export default function CustomersView() {
         </div>
       </Card>
 
-      {/* Customer Detail Modal */}
+      {/* Customer Details Modal */}
       <Dialog
         open={selectedCustomer !== null}
         onOpenChange={() => setSelectedCustomer(null)}
@@ -328,12 +476,14 @@ export default function CustomersView() {
                     {selectedCustomerData.email}
                   </p>
                 </div>
+
                 <div className="dialog-field">
                   <p className="dialog-field-label">Phone</p>
                   <p className="dialog-field-value">
                     {selectedCustomerData.phone}
                   </p>
                 </div>
+
                 <div className="dialog-field dialog-field--full">
                   <p className="dialog-field-label">Address</p>
                   <p className="dialog-field-value">
@@ -372,12 +522,14 @@ export default function CustomersView() {
                   </p>
                   <p className="dialog-stat-label">Total Orders</p>
                 </div>
+
                 <div className="dialog-stat-card">
                   <p className="dialog-stat-value">
-                    ${selectedCustomerData.totalSpent.toLocaleString()}
+                    ${formatMoney(selectedCustomerData.totalSpent)}
                   </p>
                   <p className="dialog-stat-label">Total Spent</p>
                 </div>
+
                 <div className="dialog-stat-card">
                   <p className="dialog-stat-value">
                     {selectedCustomerData.lastVisit}
@@ -387,10 +539,16 @@ export default function CustomersView() {
               </div>
 
               <div className="dialog-actions">
-                <Button className="dialog-btn dialog-btn--primary">
+                <Button
+                  className="dialog-btn dialog-btn--primary"
+                  onClick={() => openEditModal(selectedCustomerData)}
+                >
                   Edit Customer
                 </Button>
-                <Button className="dialog-btn dialog-btn--secondary">
+                <Button
+                  className="dialog-btn dialog-btn--secondary"
+                  onClick={() => handleViewOrders(selectedCustomerData)}
+                >
                   View Orders
                 </Button>
               </div>
@@ -399,61 +557,131 @@ export default function CustomersView() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Customer Modal */}
-      <Dialog open={showAddCustomer} onOpenChange={setShowAddCustomer}>
+      {/* Add / Edit Customer Modal */}
+      <Dialog
+        open={showAddCustomer}
+        onOpenChange={(open) => {
+          setShowAddCustomer(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="dialog-content">
           <DialogHeader>
-            <DialogTitle className="dialog-title">Add New Customer</DialogTitle>
+            <DialogTitle className="dialog-title">
+              {editingCustomerId ? "Edit Customer" : "Add New Customer"}
+            </DialogTitle>
           </DialogHeader>
-          <div className="dialog-body dialog-body--form">
+
+          <form
+            className="dialog-body dialog-body--form"
+            onSubmit={handleSaveCustomer}
+          >
             <div className="dialog-form-grid">
               <div className="dialog-form-field">
                 <label className="dialog-field-label">Full Name</label>
-                <Input placeholder="John Doe" className="dialog-input" />
+                <Input
+                  placeholder="John Doe"
+                  className="dialog-input"
+                  value={newCustomer.name}
+                  onChange={(e) =>
+                    setNewCustomer((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                />
               </div>
+
               <div className="dialog-form-field">
                 <label className="dialog-field-label">Email</label>
                 <Input
                   type="email"
                   placeholder="john@email.com"
                   className="dialog-input"
+                  value={newCustomer.email}
+                  onChange={(e) =>
+                    setNewCustomer((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
                 />
               </div>
+
               <div className="dialog-form-field">
                 <label className="dialog-field-label">Phone</label>
                 <Input
                   placeholder="+1 (555) 123-4567"
                   className="dialog-input"
+                  value={newCustomer.phone}
+                  onChange={(e) =>
+                    setNewCustomer((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
                 />
               </div>
+
               <div className="dialog-form-field">
                 <label className="dialog-field-label">Status</label>
-                <select className="dialog-select">
-                  <option>Active</option>
-                  <option>VIP</option>
-                  <option>Inactive</option>
+                <select
+                  className="dialog-select"
+                  value={newCustomer.status}
+                  onChange={(e) =>
+                    setNewCustomer((prev) => ({
+                      ...prev,
+                      status: e.target.value as CustomerStatus,
+                    }))
+                  }
+                >
+                  <option value="active">Active</option>
+                  <option value="vip">VIP</option>
+                  <option value="inactive">Inactive</option>
                 </select>
               </div>
+
               <div className="dialog-form-field dialog-field--full">
                 <label className="dialog-field-label">Address</label>
                 <Input
-                  placeholder="123 Main St, City, State ZIP"
+                  placeholder="123 Main St"
                   className="dialog-input"
+                  value={newCustomer.address}
+                  onChange={(e) =>
+                    setNewCustomer((prev) => ({
+                      ...prev,
+                      address: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
+
             <div className="dialog-actions">
-              <Button className="dialog-btn dialog-btn--primary">
-                Add Customer
-              </Button>
               <Button
+                type="submit"
+                className="dialog-btn dialog-btn--primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? "Saving..."
+                  : editingCustomerId
+                  ? "Save Changes"
+                  : "Add Customer"}
+              </Button>
+
+              <Button
+                type="button"
                 className="dialog-btn dialog-btn--secondary"
-                onClick={() => setShowAddCustomer(false)}
+                onClick={() => {
+                  setShowAddCustomer(false);
+                  resetForm();
+                }}
               >
                 Cancel
               </Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
