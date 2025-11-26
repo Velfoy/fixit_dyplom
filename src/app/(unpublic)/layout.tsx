@@ -13,7 +13,10 @@ export default async function PrivateLayout({
   if (!session) redirect("/login");
 
   const role = session?.user?.role?.toLowerCase();
-  const userName = session?.user?.name || "User";
+  const fullName = session?.user?.name || "User";
+  const firstName = fullName.split(" ")[0];
+
+  const userName = firstName || "User";
 
   return (
     <div className="main-layout">

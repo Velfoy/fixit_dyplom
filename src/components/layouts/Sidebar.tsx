@@ -42,6 +42,18 @@ const Sidebar: React.FC<SidebarProps> = ({ role }: SidebarProps) => {
           <span className="sidebar-text">Customers</span>
         </a>
       )}
+      {role === "admin" && (
+        <a href={`/${role}/users`} className="sidebar-btn">
+          <Users className="icon" />
+          <span className="sidebar-text">Users</span>
+        </a>
+      )}
+      {role === "admin" && (
+        <a href={`/${role}/mechanics`} className="sidebar-btn">
+          <Users className="icon" />
+          <span className="sidebar-text">Mechanics</span>
+        </a>
+      )}
 
       {/* Admin / mechanic / warehouse */}
       {(role === "admin" || role === "mechanic" || role === "warehouse") && (

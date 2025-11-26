@@ -1,9 +1,8 @@
-// app/admin/users/page.tsx
 import { authorizePage } from "@/lib/authorize";
-import CustomersView from "../../../../components/pages/CustomerView";
-import { Customer } from "@/types/customer";
+import MechanicsView from "@/components/pages/MechanicsView";
+import type { Mechanic } from "@/types/mechanics";
 
-export default async function CustomersPage() {
+export default async function MechanicsPage() {
   const session = await authorizePage(["admin"]);
   // const data = await fetch(
   //   `${process.env.NEXT_PUBLIC_BASE_URL}/api/customers`,
@@ -13,7 +12,7 @@ export default async function CustomersPage() {
   //     },
   //   }
   // ).then((res) => res.json());
-  const data: Customer[] = [];
+  const data: Mechanic[] = [];
 
-  return <CustomersView dataCustomers={data} session={session} />;
+  return <MechanicsView dataUsers={data} session={session} />;
 }

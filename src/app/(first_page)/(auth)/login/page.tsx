@@ -6,11 +6,15 @@ import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
-  const [name, setName] = useState("");
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -25,32 +29,46 @@ export default function AuthPage() {
 
       if (result?.ok) router.push("/redirect");
       else alert("Invalid credentials");
+      return;
+    }
+
+    // REGISTER
+    if (password !== repeatPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    if (!firstName || !lastName || !phone) {
+      alert("Please fill in first name, last name and phone.");
+      return;
+    }
+
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("Registration successful! You can now log in.");
+      setMode("login");
+      setEmail("");
+      setPassword("");
+      setRepeatPassword("");
+      setFirstName("");
+      setLastName("");
+      setPhone("");
     } else {
-      if (password !== repeatPassword) {
-        alert("Passwords do not match");
-        return;
-      }
-
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name, phone }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("Registration successful! You can now log in.");
-        setMode("login");
-        setEmail("");
-        setPassword("");
-        setRepeatPassword("");
-        setName("");
-        setPhone("");
-      } else {
-        alert(data.error || "Registration failed.");
-        console.log("Registration error:", data);
-      }
+      alert(data.error || "Registration failed.");
+      console.log("Registration error:", data);
     }
   }
 
@@ -89,10 +107,17 @@ export default function AuthPage() {
             />
             <input
               type="text"
-              placeholder="Full name"
+              placeholder="First name"
               className="border p-2 rounded"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Last name"
+              className="border p-2 rounded"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
             />
             <input
               type="tel"
