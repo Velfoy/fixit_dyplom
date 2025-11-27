@@ -1,11 +1,12 @@
 type User = {
   id: number;
   email: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   phone: string;
   role: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 };
 type UserRole = "ADMIN" | "WAREHOUSE" | "MECHANIC" | "CLIENT";
 
