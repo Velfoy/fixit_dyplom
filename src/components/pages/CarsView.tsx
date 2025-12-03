@@ -25,7 +25,14 @@ import type { Car, FuelType, Transmission, StatusCar } from "@/types/car";
 
 const fuelTypes: FuelType[] = ["GASOLINE", "DIESEL", "ELECTRIC", "HYBRID"];
 const transmissions: Transmission[] = ["AUTOMATIC", "MANUAL"];
-const carStatuses: StatusCar[] = ["ACTIVE", "IN_REPAIR", "INACTIVE", "SOLD"];
+const carStatuses: StatusCar[] = [
+  "NEW",
+  "IN_PROGRESS",
+  "WAITING_FOR_PARTS",
+  "READY",
+  "COMPLETED",
+  "CANCELLED",
+];
 
 const formatDate = (date?: string | Date | null) => {
   if (!date) return "-";
@@ -79,7 +86,7 @@ export default function CarsView({
     service_interval_km: undefined,
     next_inspection: null,
     insurance_expiry: null,
-    status: "ACTIVE",
+    status: "NEW",
     branchId: null,
     branchName: "",
     customerId: undefined,
@@ -98,7 +105,9 @@ export default function CarsView({
   const selectedCar = cars.find((c) => c.id === selectedCarId);
 
   const totalCars = cars.length;
-  const carsInRepair = cars.filter((c) => c.status === "IN_REPAIR").length;
+  const carsInRepair = cars.filter(
+    (c) => c.status === "IN_PROGRESS" || c.status === "WAITING_FOR_PARTS"
+  ).length;
   const nextServiceDue = cars
     .filter((c) => c.next_service)
     .sort(
@@ -127,7 +136,7 @@ export default function CarsView({
       service_interval_km: undefined,
       next_inspection: null,
       insurance_expiry: null,
-      status: "ACTIVE",
+      status: "NEW",
       branchId: null,
       branchName: "",
       customerId: undefined,
@@ -325,7 +334,7 @@ export default function CarsView({
                       License: {car.license_plate || "-"}
                     </span>
                     <span className="customer-meta-item">
-                      Status: {car.status}
+                      Latest order status: {car.status}
                     </span>
                   </div>
                 </div>
@@ -395,7 +404,7 @@ export default function CarsView({
                   ["Mileage", selectedCar.mileage],
                   ["Fuel Type", selectedCar.fuel_type],
                   ["Transmission", selectedCar.transmission],
-                  ["Status", selectedCar.status],
+                  ["Latest order status", selectedCar.status],
                   ["Branch", selectedCar.branchName],
                   ["Engine Size", selectedCar.engine_size],
                   ["Body Type", selectedCar.body_type],
@@ -631,7 +640,9 @@ export default function CarsView({
 
               {/* Status */}
               <div className="dialog-form-field">
-                <label className="dialog-field-label">Status</label>
+                <label className="dialog-field-label">
+                  Latest order status
+                </label>
                 <select
                   className="dialog-input"
                   value={newCar.status || ""}

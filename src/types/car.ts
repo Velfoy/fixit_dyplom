@@ -1,6 +1,12 @@
 export type FuelType = "GASOLINE" | "DIESEL" | "ELECTRIC" | "HYBRID";
 export type Transmission = "AUTOMATIC" | "MANUAL";
-export type StatusCar = "ACTIVE" | "IN_REPAIR" | "INACTIVE" | "SOLD";
+export type StatusCar =
+  | "NEW"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_PARTS"
+  | "READY"
+  | "COMPLETED"
+  | "CANCELLED";
 
 export interface Car {
   id: number;

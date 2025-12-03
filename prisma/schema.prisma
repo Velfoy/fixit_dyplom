@@ -155,6 +155,7 @@ model service_order {
   notes                        String?
   created_at                   DateTime                       @default(now()) @db.Timestamp(6)
   updated_at                   DateTime                       @default(now()) @db.Timestamp(6)
+  progress                     Decimal                        @default(0) @db.Decimal(5, 2)
   document                     document[]
   invoice                      invoice?
   review                       review[]

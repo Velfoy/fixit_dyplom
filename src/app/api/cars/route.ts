@@ -22,10 +22,19 @@ function mapTransmission(trans: string | null): Transmission | null {
 
 function mapStatus(status: string | null): StatusCar {
   const value = status?.toUpperCase();
-  if (["ACTIVE", "IN_REPAIR", "INACTIVE", "SOLD"].includes(value!)) {
+  if (
+    [
+      "NEW",
+      "IN_PROGRESS",
+      "WAITING_FOR_PARTS",
+      "READY",
+      "COMPLETED",
+      "CANCELLED",
+    ].includes(value!)
+  ) {
     return value as StatusCar;
   }
-  return "ACTIVE";
+  return "NEW";
 }
 
 // GET all cars
@@ -35,37 +44,48 @@ export async function GET() {
       include: {
         branches: true,
         customer: { include: { users: true } },
+        service_order: true,
       },
       orderBy: { updated_at: "desc" },
     });
 
-    const cars: Car[] = vehicles.map((v) => ({
-      id: v.id,
-      first_name: v.customer?.users?.first_name || "",
-      last_name: v.customer?.users?.last_name || "",
-      brand: v.brand,
-      model: v.model,
-      year: v.year ?? null,
-      vin: v.vin,
-      license_plate: v.license_plate || "",
-      mileage: v.mileage ?? null,
-      fuel_type: mapFuelType(v.fuel_type),
-      engine_size: v.engine_size || "",
-      transmission: mapTransmission(v.transmission),
-      body_type: v.body_type || "",
-      color: v.color || "",
-      last_service: v.last_service,
-      next_service: v.next_service,
-      service_interval_km: v.service_interval_km ?? null,
-      next_inspection: v.next_inspection,
-      insurance_expiry: v.insurance_expiry,
-      status: mapStatus(v.status),
-      branchId: v.branch_id,
-      customerId: v.customer_id,
-      branchName: v.branches?.name || "",
-      created_at: v.created_at.toISOString(),
-      updated_at: v.updated_at.toISOString(),
-    }));
+    const cars: Car[] = vehicles.map((v) => {
+      // get latest service order
+      const latestOrder =
+        v.service_order && v.service_order.length > 0
+          ? [...v.service_order].sort(
+              (a, b) => b.updated_at.getTime() - a.updated_at.getTime()
+            )[0]
+          : null;
+
+      return {
+        id: v.id,
+        first_name: v.customer?.users?.first_name || "",
+        last_name: v.customer?.users?.last_name || "",
+        brand: v.brand,
+        model: v.model,
+        year: v.year ?? null,
+        vin: v.vin,
+        license_plate: v.license_plate || "",
+        mileage: v.mileage ?? null,
+        fuel_type: mapFuelType(v.fuel_type),
+        engine_size: v.engine_size || "",
+        transmission: mapTransmission(v.transmission),
+        body_type: v.body_type || "",
+        color: v.color || "",
+        last_service: v.last_service,
+        next_service: v.next_service,
+        service_interval_km: v.service_interval_km ?? null,
+        next_inspection: v.next_inspection,
+        insurance_expiry: v.insurance_expiry,
+        status: mapStatus(latestOrder?.status ?? v.status),
+        branchId: v.branch_id,
+        customerId: v.customer_id,
+        branchName: v.branches?.name || "",
+        created_at: v.created_at.toISOString(),
+        updated_at: v.updated_at.toISOString(),
+      };
+    });
 
     return NextResponse.json(cars);
   } catch (error) {
@@ -112,9 +132,9 @@ export async function POST(req: Request) {
         insurance_expiry: data.insurance_expiry
           ? new Date(data.insurance_expiry)
           : null,
-        status: data.status ?? "ACTIVE",
+        status: data.status ?? "NEW",
         branch_id: data.branchId ?? null,
-        customer_id: data.customerId, // link to customer
+        customer_id: data.customerId,
       },
       include: {
         branches: true,
@@ -195,7 +215,7 @@ export async function PUT(req: Request) {
         insurance_expiry: data.insurance_expiry
           ? new Date(data.insurance_expiry)
           : null,
-        status: data.status ?? "ACTIVE",
+        status: data.status ?? "NEW",
         branch_id: data.branchId ?? null,
         customer_id: data.customerId ?? undefined,
       },

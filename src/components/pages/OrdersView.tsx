@@ -2,51 +2,89 @@
 
 import { useState } from "react";
 import { CreateOrderModal } from "./CreateOrderModal";
+import { Card } from "../ui/card";
+import { ServiceOrders, StatusServiceOrder } from "@/types/serviceorders";
 
-interface OrdersViewProps {
-  isAdmin?: boolean;
-}
-
-interface Order {
-  id: string;
-  carModel: string;
-  carYear: string;
-  issue: string;
-  status: "pending" | "in-progress" | "completed";
-  progress: number;
-  estimatedCompletion: string;
-  mechanicName: string;
-  cost: number;
-}
-
-export function OrdersView({ isAdmin = false }: OrdersViewProps) {
+export function OrdersView({
+  session,
+  dataServiceOrders,
+}: {
+  session: any;
+  dataServiceOrders: ServiceOrders[];
+}) {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [orders, setOrders] = useState<Order[]>([
+  const [orders, setOrders] = useState<ServiceOrders[]>([
     {
-      id: "123",
-      carModel: "Porsche 911 Carrera",
+      id: "1",
+      orderNumber: "SO-1001",
+      carBrand: "Porsche",
+      carModel: "911 Carrera",
       carYear: "2023",
-      issue: "Engine repair and oil change",
-      status: "in-progress",
+      description: "Engine repair and oil change",
+      status: "IN_PROGRESS",
+      startDate: new Date("2025-11-01T09:00:00Z"),
+      endDate: new Date("2025-11-03T17:00:00Z"),
+      total_cost: 850,
+      created_at: new Date("2025-11-01T08:30:00Z").toISOString(),
+      updated_at: new Date("2025-11-01T12:00:00Z").toISOString(),
       progress: 65,
-      estimatedCompletion: "2 days",
-      mechanicName: "Mike Johnson",
-      cost: 850,
+      mechanicFirstName: "Mike",
+      mechanicLastName: "Johnson",
     },
     {
-      id: "124",
-      carModel: "BMW M4 Competition",
+      id: "2",
+      orderNumber: "SO-1002",
+      carBrand: "BMW",
+      carModel: "M4 Competition",
       carYear: "2022",
-      issue: "Brake system replacement",
-      status: "completed",
+      description: "Brake system replacement",
+      status: "COMPLETED",
+      startDate: new Date("2025-10-20T10:00:00Z"),
+      endDate: new Date("2025-10-22T16:00:00Z"),
+      total_cost: 1200,
+      created_at: new Date("2025-10-20T09:45:00Z").toISOString(),
+      updated_at: new Date("2025-10-22T16:00:00Z").toISOString(),
       progress: 100,
-      estimatedCompletion: "Completed",
-      mechanicName: "Sarah Williams",
-      cost: 1200,
+      mechanicFirstName: "Sarah",
+      mechanicLastName: "Williams",
+    },
+    {
+      id: "3",
+      orderNumber: "SO-1003",
+      carBrand: "Audi",
+      carModel: "RS7",
+      carYear: "2024",
+      description: "Transmission service",
+      status: "WAITING_FOR_PARTS",
+      startDate: new Date("2025-11-02T08:00:00Z"),
+      endDate: new Date("2025-11-10T17:00:00Z"),
+      total_cost: 1500,
+      created_at: new Date("2025-11-02T07:30:00Z").toISOString(),
+      updated_at: new Date("2025-11-03T10:00:00Z").toISOString(),
+      progress: 40,
+      mechanicFirstName: "John",
+      mechanicLastName: "Doe",
+    },
+    {
+      id: "4",
+      orderNumber: "SO-1004",
+      carBrand: "Tesla",
+      carModel: "Model S Plaid",
+      carYear: "2023",
+      description: "Battery replacement",
+      status: "NEW",
+      startDate: new Date("2025-12-01T09:00:00Z"),
+      endDate: new Date("2025-12-05T17:00:00Z"),
+      total_cost: 2000,
+      created_at: new Date("2025-12-01T08:00:00Z").toISOString(),
+      updated_at: new Date("2025-12-01T08:00:00Z").toISOString(),
+      progress: 0,
+      mechanicFirstName: "Alice",
+      mechanicLastName: "Smith",
     },
   ]);
 
-  const handleCreateOrder = (newOrder: Order) => {
+  const handleCreateOrder = (newOrder: ServiceOrders) => {
     setOrders([newOrder, ...orders]);
     setShowCreateModal(false);
   };
@@ -60,10 +98,8 @@ export function OrdersView({ isAdmin = false }: OrdersViewProps) {
 
   return (
     <div>
-      <h2>{isAdmin ? "Order Management" : "Your Orders"}</h2>
-      {isAdmin && (
-        <button onClick={() => setShowCreateModal(true)}>+ Create Order</button>
-      )}
+      <h2>Order Management</h2>
+      <button onClick={() => setShowCreateModal(true)}>+ Create Order</button>
 
       <div>
         {orders.map((order) => (
@@ -79,9 +115,9 @@ export function OrdersView({ isAdmin = false }: OrdersViewProps) {
           >
             <h3>{order.carModel}</h3>
             <p>Order #{order.id}</p>
-            <p>{order.issue}</p>
+            <p>{order.description}</p>
             <p>Status: {order.status}</p>
-            <p>Mechanic: {order.mechanicName}</p>
+            <p>Mechanic: {order.mechanicFirstName}</p>
           </div>
         ))}
       </div>
