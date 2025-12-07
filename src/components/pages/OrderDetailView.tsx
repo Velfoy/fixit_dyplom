@@ -4,16 +4,12 @@ import {
   Order,
   ServiceOrders,
   StatusServiceOrder,
-  TaskStatus,
 } from "@/types/serviceorders";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, FormEvent } from "react";
 import {
-  ArrowBigLeft,
   ArrowLeft,
-  Calendar,
-  CarIcon,
   Clock,
   DollarSign,
   Edit,
@@ -27,6 +23,8 @@ import {
 import "@/styles/users.css";
 import "@/styles/orders.css";
 import { Card } from "../ui/card";
+import { Input } from "../ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface OrderDetailViewProps {
   dataServiceOrder?: Order | null;
@@ -41,7 +39,52 @@ export function OrderDetailView({
   const [serviceOrder, setServiceOrder] = useState<Order | null>(
     dataServiceOrder ?? null
   );
-  async function handleEdit() {}
+  const [showEditOrder, setShowEditOrder] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editedOrder, setEditedOrder] = useState<Partial<Order>>({});
+
+  function resetForm() {
+    setEditedOrder({});
+  }
+
+  async function handleEdit() {
+    if (!serviceOrder) return;
+    setEditedOrder({
+      issue: serviceOrder.issue,
+      description: serviceOrder.description,
+      endDate: serviceOrder.endDate,
+      total_cost: serviceOrder.total_cost,
+      priority: serviceOrder.priority,
+    });
+    setShowEditOrder(true);
+  }
+
+  async function handleUpdateOrder(e: FormEvent) {
+    e.preventDefault();
+    if (!serviceOrder) return;
+    setIsSubmitting(true);
+
+    try {
+      // Currently no PUT endpoint exists for orders in the API, so update locally.
+      const updated: Order = {
+        ...serviceOrder,
+        issue: editedOrder.issue ?? serviceOrder.issue,
+        description: editedOrder.description ?? serviceOrder.description,
+        endDate: editedOrder.endDate ?? serviceOrder.endDate,
+        total_cost: Number(editedOrder.total_cost ?? serviceOrder.total_cost),
+        priority: (editedOrder.priority as string) ?? serviceOrder.priority,
+      };
+
+      setServiceOrder(updated);
+      setShowEditOrder(false);
+      resetForm();
+    } catch (err) {
+      console.error("Failed to update order:", err);
+      alert("Failed to save changes");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
   const handleBack = () => {
     const segments = window.location.pathname.split("/").filter(Boolean);
     const roleSegment = segments[0] || "client";
@@ -83,11 +126,13 @@ export function OrderDetailView({
     setLineHeights(heights);
   }, [serviceOrder]);
 
-  const statusMap: Record<TaskStatus, string> = {
-    PENDING: "grafic-new",
+  const statusMap: Record<StatusServiceOrder, string> = {
+    NEW: "grafic-new",
     IN_PROGRESS: "grafic-in_progress",
-    DONE: "grafic-completed",
-    BLOCKED: "grafic-cancelled",
+    WAITING_FOR_PARTS: "grafic-waiting_for_parts",
+    READY: "grafic-ready",
+    COMPLETED: "grafic-completed",
+    CANCELLED: "grafic-cancelled",
   };
 
   return (
@@ -228,7 +273,8 @@ export function OrderDetailView({
           <Card className="customers-list">
             {serviceOrder?.task.map((task, index) => {
               const statusClass =
-                statusMap[task.status as TaskStatus] || "grafic-unknown";
+                statusMap[task.status as StatusServiceOrder] ||
+                "grafic-unknown";
 
               return (
                 <div
@@ -330,6 +376,144 @@ export function OrderDetailView({
       <Card className="customers-list-card">
         <div className="customers-list-inner"></div>
       </Card>
+      <Dialog
+        open={showEditOrder}
+        onOpenChange={(open) => {
+          setShowEditOrder(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="dialog-content">
+          <DialogHeader>
+            <DialogTitle className="dialog-title">
+              Edit Service Order
+            </DialogTitle>
+          </DialogHeader>
+
+          <form
+            className="dialog-body dialog-body--form"
+            onSubmit={handleUpdateOrder}
+          >
+            <div className="dialog-form-grid">
+              <div className="dialog-form-field dialog-field--full">
+                <label className="dialog-field-label">
+                  Issue Description *
+                </label>
+                <Input
+                  placeholder="Describe the issue or service needed"
+                  className="dialog-input"
+                  value={editedOrder.issue ?? ""}
+                  onChange={(e) =>
+                    setEditedOrder((prev) => ({
+                      ...prev,
+                      issue: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+
+              <div className="dialog-form-field dialog-field--full">
+                <label className="dialog-field-label">
+                  Detailed Description
+                </label>
+                <textarea
+                  placeholder="Additional details about the service"
+                  className="dialog-input "
+                  style={{ minHeight: "100px" }}
+                  value={editedOrder.description ?? ""}
+                  onChange={(e) =>
+                    setEditedOrder((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="dialog-form-field">
+                <label className="dialog-field-label">
+                  Estimated Cost ($) *
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="dialog-input"
+                  value={editedOrder.total_cost ?? ""}
+                  onChange={(e) =>
+                    setEditedOrder((prev) => ({
+                      ...prev,
+                      total_cost: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  required
+                />
+              </div>
+
+              <div className="dialog-form-field">
+                <label className="dialog-field-label">Priority *</label>
+                <select
+                  className="dialog-input"
+                  value={editedOrder.priority ?? "NORMAL"}
+                  onChange={(e) =>
+                    setEditedOrder((prev) => ({
+                      ...prev,
+                      priority: e.target.value,
+                    }))
+                  }
+                  required
+                >
+                  <option value="LOW">Low</option>
+                  <option value="NORMAL">Normal</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
+
+              <div className="dialog-form-field">
+                <label className="dialog-field-label">
+                  Estimated Completion Date *
+                </label>
+                <Input
+                  type="date"
+                  className="dialog-input"
+                  value={editedOrder.endDate ?? ""}
+                  onChange={(e) =>
+                    setEditedOrder((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="dialog-actions">
+              <Button
+                type="submit"
+                className="dialog-btn dialog-btn--primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+
+              <Button
+                type="button"
+                className="dialog-btn dialog-btn--secondary"
+                onClick={() => {
+                  setShowEditOrder(false);
+                  resetForm();
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

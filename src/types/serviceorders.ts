@@ -46,14 +46,13 @@ type Order = {
   mechanicLastName: string;
   task: Task[];
 };
-export type TaskStatus = "PENDING" | "IN_PROGRESS" | "DONE" | "BLOCKED";
 export type Task = {
   id: number;
   mechanicFirstName: string;
   mechanicLastName: string;
   title: string;
   description: string;
-  status: TaskStatus;
+  status: StatusServiceOrder;
   created_at: string;
   updated_at: string;
   priority: PriorityOrder;

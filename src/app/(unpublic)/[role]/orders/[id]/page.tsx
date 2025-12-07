@@ -28,7 +28,7 @@ export default async function OrderPage(props: OrderPageProps) {
         title: "Engine Diagnostic",
         description:
           "Performed complete engine diagnostic to identify all issues.",
-        status: "DONE",
+        status: "READY",
         created_at: "2025-11-10T09:00:00Z",
         updated_at: "2025-11-11T12:00:00Z",
         priority: "HIGH",
@@ -40,7 +40,7 @@ export default async function OrderPage(props: OrderPageProps) {
         title: "Oil Pump Replacement",
         description:
           "Replaced the oil pump and performed routine oil change. Replaced the oil pump and performed routine oil change",
-        status: "DONE",
+        status: "READY",
         created_at: "2025-11-11T10:00:00Z",
         updated_at: "2025-11-12T14:00:00Z",
         priority: "NORMAL",
@@ -63,7 +63,7 @@ export default async function OrderPage(props: OrderPageProps) {
         title: "Brake System Check",
         description:
           "Checked brakes, replaced worn pads, and tested braking efficiency.",
-        status: "PENDING",
+        status: "WAITING_FOR_PARTS",
         created_at: "2025-11-12T09:00:00Z",
         updated_at: "2025-11-12T09:00:00Z",
         priority: "NORMAL",
@@ -74,7 +74,7 @@ export default async function OrderPage(props: OrderPageProps) {
         mechanicLastName: "Johnson",
         title: "Fluid Levels Inspection",
         description: "Checked all fluids and topped up as necessary.",
-        status: "BLOCKED",
+        status: "CANCELLED",
         created_at: "2025-11-12T09:30:00Z",
         updated_at: "2025-11-12T09:30:00Z",
         priority: "LOW",

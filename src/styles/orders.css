@@ -313,26 +313,34 @@
   background-color: #ccc;
   margin-top: 6px;
 }
-
 .grafic-new {
   background: #0099ff;
 }
 
 .grafic-in_progress {
-  background: #f5a623;
+  background: #ff9800;
+}
+
+.grafic-waiting_for_parts {
+  background: #c435e0f8;
+}
+
+.grafic-ready {
+  background: #04a804;
 }
 
 .grafic-completed {
-  background: #4caf50;
+  background: #012c03;
 }
 
 .grafic-cancelled {
-  background: #d9534f;
+  background: #cc2215;
 }
 
 .grafic-unknown {
   background: #999999;
 }
+
 .card-base {
   gap: 0px !important;
 }
