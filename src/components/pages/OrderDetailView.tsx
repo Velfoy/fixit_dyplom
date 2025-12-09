@@ -26,6 +26,7 @@ import "@/styles/transaction.css";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Table, type ColumnDef } from "../ui/table";
 
 interface OrderDetailViewProps {
   dataServiceOrder?: Order | null;
@@ -44,6 +45,54 @@ export function OrderDetailView({
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editedOrder, setEditedOrder] = useState<Partial<Order>>({});
+
+  // Helper to transform API order response to frontend Order type
+  const transformOrder = (apiOrder: any): Order => {
+    return {
+      id: apiOrder.id,
+      orderNumber: apiOrder.order_number,
+      carBrand: apiOrder.vehicle?.brand || serviceOrder?.carBrand || "",
+      carModel: apiOrder.vehicle?.model || serviceOrder?.carModel || "",
+      carYear:
+        apiOrder.vehicle?.year?.toString() || serviceOrder?.carYear || "",
+      carLicensePlate:
+        apiOrder.vehicle?.license_plate || serviceOrder?.carLicensePlate || "",
+      issue: apiOrder.issue || "",
+      description: apiOrder.description || "",
+      status: apiOrder.status,
+      endDate: apiOrder.end_date || "",
+      total_cost: parseFloat(apiOrder.total_cost?.toString() || "0"),
+      progress: parseFloat(apiOrder.progress?.toString() || "0"),
+      priority: apiOrder.priority || "NORMAL",
+      mechanicFirstName:
+        apiOrder.employees?.users?.first_name ||
+        serviceOrder?.mechanicFirstName ||
+        "",
+      mechanicLastName:
+        apiOrder.employees?.users?.last_name ||
+        serviceOrder?.mechanicLastName ||
+        "",
+      mechanicEmail:
+        apiOrder.employees?.users?.email || serviceOrder?.mechanicEmail || "",
+      mechanicPhone:
+        apiOrder.employees?.users?.phone || serviceOrder?.mechanicPhone || "",
+      task:
+        apiOrder.service_task?.map((t: any) => ({
+          id: t.id,
+          mechanicFirstName: t.employees?.users?.first_name || "",
+          mechanicLastName: t.employees?.users?.last_name || "",
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          created_at: t.created_at,
+          updated_at: t.updated_at,
+          priority: t.priority,
+        })) ||
+        serviceOrder?.task ||
+        [],
+    };
+  };
+
   const [showAddTask, setShowAddTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -70,6 +119,17 @@ export function OrderDetailView({
   >([]);
   const [showPaymentProcessing, setShowPaymentProcessing] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
+
+  // Parts management state
+  const [orderParts, setOrderParts] = useState<any[]>([]);
+  const [loadingParts, setLoadingParts] = useState(false);
+  const [showAddPart, setShowAddPart] = useState(false);
+  const [availableParts, setAvailableParts] = useState<any[]>([]);
+  const [selectedPart, setSelectedPart] = useState<any>(null);
+  const [partQuantity, setPartQuantity] = useState<number>(1);
+  const [includeInTotal, setIncludeInTotal] = useState<boolean>(false);
+  const [partsSearchTerm, setPartsSearchTerm] = useState<string>("");
+  const [loadingAvailableParts, setLoadingAvailableParts] = useState(false);
 
   // Helper to convert Decimal/string to number
   const toNumber = (val: any): number => {
@@ -107,6 +167,28 @@ export function OrderDetailView({
     };
 
     fetchItems();
+  }, [serviceOrder?.id]);
+
+  // Function to fetch warehouse parts
+  const fetchOrderParts = async () => {
+    if (!serviceOrder?.id) return;
+    setLoadingParts(true);
+    try {
+      const res = await fetch(`/api/orders/${serviceOrder.id}/parts`);
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const parts = await res.json();
+      setOrderParts(parts);
+    } catch (err) {
+      console.warn("Failed to fetch order parts:", err);
+      setOrderParts([]);
+    } finally {
+      setLoadingParts(false);
+    }
+  };
+
+  // Fetch warehouse parts assigned to this order
+  useEffect(() => {
+    fetchOrderParts();
   }, [serviceOrder?.id]);
 
   function openAddTask() {
@@ -450,18 +532,27 @@ export function OrderDetailView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error("Failed to update order status");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to update order status");
+      }
       const updated: Order = await res.json();
       setServiceOrder(updated);
       setShowStatusDialog(false);
+
+      // If completing order, refresh parts list to show deducted status
+      if (newStatus === "COMPLETED") {
+        await fetchOrderParts();
+      }
+
       if (isTerminalStatus(newStatus)) {
         setShowAddTask(false);
         setShowEditOrder(false);
         setShowEditTask(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to change order status");
+      alert(err.message || "Failed to change order status");
     } finally {
       setIsSubmitting(false);
     }
@@ -579,6 +670,192 @@ export function OrderDetailView({
     }
   }
 
+  // Search warehouse parts
+  async function handleSearchParts() {
+    if (!partsSearchTerm.trim()) {
+      setAvailableParts([]);
+      return;
+    }
+
+    setLoadingAvailableParts(true);
+    try {
+      const res = await fetch(
+        `/api/warehouse/parts?search=${encodeURIComponent(
+          partsSearchTerm
+        )}&limit=50`
+      );
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const parts = await res.json();
+      setAvailableParts(parts);
+    } catch (err) {
+      console.error("Failed to search parts:", err);
+      alert("Failed to search warehouse parts");
+    } finally {
+      setLoadingAvailableParts(false);
+    }
+  }
+
+  // Add part to order
+  async function handleAddPart(e: FormEvent) {
+    e.preventDefault();
+    if (!serviceOrder || !selectedPart || partQuantity <= 0) return;
+    setIsSubmitting(true);
+
+    try {
+      const priceAtTime = toNumber(selectedPart.price) * partQuantity;
+      const res = await fetch(`/api/orders/${serviceOrder.id}/parts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          partId: selectedPart.id,
+          quantity: partQuantity,
+          priceAtTime: priceAtTime,
+          deductFromWarehouse: includeInTotal,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to add part");
+      }
+
+      const response = await res.json();
+      console.log("Add part response:", response);
+      console.log("Part data:", response.part);
+      setServiceOrder(transformOrder(response.order));
+
+      // Add the newly created part with its full data to the list
+      setOrderParts((prev) => [...prev, response.part]);
+
+      // Reset form
+      setShowAddPart(false);
+      setSelectedPart(null);
+      setPartQuantity(1);
+      setIncludeInTotal(false);
+      setPartsSearchTerm("");
+      setAvailableParts([]);
+    } catch (err: any) {
+      console.error("Error adding part:", err);
+      alert(`Failed to add part: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // Delete part from order
+  async function handleDeletePart(partId: string) {
+    if (!serviceOrder) return;
+    if (!confirm("Are you sure you want to remove this part?")) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/orders/${serviceOrder.id}/parts/${partId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to delete part");
+      }
+
+      const response = await res.json();
+      setServiceOrder(transformOrder(response.order));
+      setOrderParts((prev) => prev.filter((p) => p.id !== partId));
+    } catch (err: any) {
+      console.error("Error deleting part:", err);
+      alert(`Failed to delete part: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // Toggle deduct from warehouse flag
+  async function handleToggleDeduct(partId: string, currentValue: boolean) {
+    if (!serviceOrder) return;
+
+    try {
+      console.log(
+        `Toggling part ${partId} from ${currentValue} to ${!currentValue}`
+      );
+      const res = await fetch(
+        `/api/orders/${serviceOrder.id}/parts/${partId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            deductFromWarehouse: !currentValue,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to update part");
+      }
+
+      const response = await res.json();
+      console.log(
+        "Toggle response - Old order total:",
+        serviceOrder.total_cost
+      );
+      console.log(
+        "Toggle response - New order total:",
+        response.order.total_cost
+      );
+      console.log("Full response:", response);
+
+      setServiceOrder(transformOrder(response.order));
+      setOrderParts((prev) =>
+        prev.map((p) =>
+          p.id === partId ? { ...p, deductFromWarehouse: !currentValue } : p
+        )
+      );
+    } catch (err: any) {
+      console.error("Error updating part:", err);
+      alert(`Failed to update part: ${err.message}`);
+    }
+  }
+
+  // Deduct parts from warehouse
+  async function handleDeductPartsFromWarehouse() {
+    if (!serviceOrder) return;
+    if (!confirm("This will deduct all marked parts from warehouse. Continue?"))
+      return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/orders/${serviceOrder.id}/deduct-parts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to deduct parts");
+      }
+
+      const result = await res.json();
+      const deductedIds = result.deductedParts?.map((dp: any) => dp.id) || [];
+      setOrderParts((prev) =>
+        prev.map((p) =>
+          deductedIds.includes(p.id)
+            ? { ...p, warehouseDeductedAt: new Date().toISOString() }
+            : p
+        )
+      );
+      alert(result.message || "Parts deducted from warehouse successfully!");
+    } catch (err: any) {
+      console.error("Error deducting parts:", err);
+      alert(`Failed to deduct parts: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const statusMap: Record<StatusServiceOrder, string> = {
     NEW: "grafic-new",
     IN_PROGRESS: "grafic-in_progress",
@@ -687,7 +964,7 @@ export function OrderDetailView({
               <p className="stats-label_order">Total Cost</p>
               <p className="stats-value_order">
                 {" "}
-                $ {serviceOrder?.total_cost || 0}
+                ${toNumber(serviceOrder?.total_cost || 0).toFixed(2)}
               </p>
             </div>
           </div>
@@ -869,6 +1146,211 @@ export function OrderDetailView({
           </Card>
         </div>
       </Card>
+      {/* Warehouse Parts Management Section */}
+      <Card className="customers-list-card">
+        <div className="customers-list-inner">
+          <div className="customers-header" style={{ marginLeft: "5px" }}>
+            <span>Warehouse Parts Used</span>
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "MECHANIC") &&
+              !isTerminalStatus(serviceOrder?.status) && (
+                <div className="transaction-details-header">
+                  <div className="transaction-actions">
+                    <Button
+                      onClick={() => setShowAddPart(true)}
+                      className="edit-button_trans"
+                    >
+                      <Plus className="icon-xxx" />
+                      <span>Add Part</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+          </div>
+
+          <div style={{ paddingTop: "15px" }}>
+            {loadingParts ? (
+              <div style={{ textAlign: "center", padding: "20px" }}>
+                Loading parts...
+              </div>
+            ) : orderParts.length === 0 ? (
+              <div
+                style={{ textAlign: "center", padding: "20px", color: "#999" }}
+              >
+                No warehouse parts assigned yet
+              </div>
+            ) : (
+              <>
+                {console.log("Rendering parts:", orderParts)}
+                <Table
+                  data={orderParts}
+                  columns={[
+                    {
+                      key: "name",
+                      header: "Part Name",
+                      render: (part: any) => part.part?.name || part.partId,
+                    },
+                    {
+                      key: "part_number",
+                      header: "Part Number",
+                      render: (part: any) => part.part?.part_number || "-",
+                    },
+                    {
+                      key: "quantity",
+                      header: "Quantity",
+                      render: (part: any) => toNumber(part.quantity),
+                    },
+                    {
+                      key: "unit_price",
+                      header: "Unit Price",
+                      render: (part: any) => {
+                        const price =
+                          part.priceAtTime || part.price_at_time || 0;
+                        const qty = part.quantity || 1;
+                        return `$${(toNumber(price) / toNumber(qty)).toFixed(
+                          2
+                        )}`;
+                      },
+                    },
+                    {
+                      key: "total",
+                      header: "Total",
+                      render: (part: any) => {
+                        const price =
+                          part.priceAtTime || part.price_at_time || 0;
+                        return `$${toNumber(price).toFixed(2)}`;
+                      },
+                      className: "transaction-amount",
+                    },
+                    {
+                      key: "include_in_total",
+                      header: "Include in Total",
+                      render: (part: any) => (
+                        <input
+                          type="checkbox"
+                          checked={part.deductFromWarehouse || false}
+                          onChange={() =>
+                            handleToggleDeduct(
+                              part.id,
+                              part.deductFromWarehouse
+                            )
+                          }
+                          disabled={isTerminalStatus(serviceOrder?.status)}
+                        />
+                      ),
+                    },
+                    {
+                      key: "deducted",
+                      header: "Deducted",
+                      render: (part: any) =>
+                        part.warehouseDeductedAt ? "✓" : "-",
+                    },
+                    {
+                      key: "action",
+                      header: "Action",
+                      render: (part: any) => (
+                        <Button
+                          onClick={() => handleDeletePart(part.id)}
+                          className="edit-button_trans"
+                          disabled={
+                            isTerminalStatus(serviceOrder?.status) ||
+                            loadingParts
+                          }
+                          style={{
+                            padding: "4px 8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      ),
+                    },
+                  ]}
+                  pageSize={10}
+                  getRowKey={(part) => part.id}
+                />
+
+                {/* Parts Total Summary */}
+                <div
+                  style={{
+                    padding: "15px",
+                    borderTop: "1px solid #ddd",
+                    textAlign: "right",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "8px",
+                      paddingBottom: "8px",
+                      borderBottom: "1px solid #ddd",
+                    }}
+                  >
+                    <span>Parts Total (All):</span>
+                    <span>
+                      $
+                      {orderParts
+                        .reduce((sum, part) => {
+                          const price =
+                            part.priceAtTime || part.price_at_time || 0;
+                          return sum + toNumber(price);
+                        }, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "8px",
+                      paddingBottom: "8px",
+                      borderBottom: "1px solid #ddd",
+                    }}
+                  >
+                    <span>Parts Included in Order Total:</span>
+                    <span>
+                      $
+                      {orderParts
+                        .filter((p) => p.deductFromWarehouse)
+                        .reduce((sum, part) => {
+                          const price =
+                            part.priceAtTime || part.price_at_time || 0;
+                          return sum + toNumber(price);
+                        }, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Deduct from Warehouse Button */}
+                  {orderParts.some(
+                    (p) => p.deductFromWarehouse && !p.warehouseDeductedAt
+                  ) && (
+                    <Button
+                      onClick={handleDeductPartsFromWarehouse}
+                      className="transaction-pay-now-btn"
+                      disabled={
+                        isTerminalStatus(serviceOrder?.status) ||
+                        isSubmitting ||
+                        !orderParts.some(
+                          (p) => p.deductFromWarehouse && !p.warehouseDeductedAt
+                        )
+                      }
+                      style={{
+                        marginTop: "10px",
+                        backgroundColor: "#ff9800",
+                      }}
+                    >
+                      {isSubmitting ? "Processing..." : "Delete from Warehouse"}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </Card>
       <Card className="customers-list-card">
         <div className="customers-list-inner">
           <div className="customers-header" style={{ marginLeft: "5px" }}>
@@ -973,7 +1455,7 @@ export function OrderDetailView({
                 <span>
                   $
                   {(
-                    Number(serviceOrder?.total_cost || 0) +
+                    toNumber(serviceOrder?.total_cost || 0) +
                     invoiceItems.reduce(
                       (sum, item) => sum + Number(item.cost || 0),
                       0
@@ -1019,7 +1501,7 @@ export function OrderDetailView({
                 <span>
                   $
                   {(
-                    (serviceOrder?.total_cost || 0) +
+                    toNumber(serviceOrder?.total_cost || 0) +
                     invoiceItems.reduce((sum, item) => sum + item.cost, 0)
                   ).toFixed(2)}
                 </span>
@@ -1096,6 +1578,216 @@ export function OrderDetailView({
         </DialogContent>
       </Dialog>
 
+      {/* Add Warehouse Part Dialog */}
+      <Dialog
+        open={showAddPart}
+        onOpenChange={(open) => {
+          setShowAddPart(open);
+        }}
+      >
+        <DialogContent className="dialog-content">
+          <DialogHeader>
+            <DialogTitle className="dialog-title">
+              Add Warehouse Part
+            </DialogTitle>
+          </DialogHeader>
+
+          <form
+            className="dialog-body dialog-body--form"
+            onSubmit={handleAddPart}
+          >
+            {/* Search Parts */}
+            <div className="dialog-form-field dialog-field--full">
+              <label className="dialog-field-label">Search Part *</label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Input
+                  className="dialog-input"
+                  value={partsSearchTerm}
+                  onChange={(e) => setPartsSearchTerm(e.target.value)}
+                  placeholder="Search by name or part number..."
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  type="button"
+                  onClick={handleSearchParts}
+                  className="dialog-btn dialog-btn--secondary"
+                  disabled={loadingAvailableParts || !partsSearchTerm.trim()}
+                >
+                  Search
+                </Button>
+              </div>
+
+              {/* Search Results Dropdown */}
+              {availableParts.length > 0 && (
+                <div
+                  style={{
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    marginTop: "8px",
+                    maxHeight: "200px",
+                    overflowY: "auto",
+                  }}
+                >
+                  {availableParts.map((part) => (
+                    <div
+                      key={part.id}
+                      onClick={() => {
+                        setSelectedPart(part);
+                        setPartsSearchTerm(part.name);
+                        setAvailableParts([]);
+                      }}
+                      style={{
+                        padding: "10px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #f0f0f0",
+                        backgroundColor:
+                          selectedPart?.id === part.id ? "#f0f8ff" : "#fff",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedPart?.id !== part.id) {
+                          e.currentTarget.style.backgroundColor = "#f9f9f9";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedPart?.id !== part.id) {
+                          e.currentTarget.style.backgroundColor = "#fff";
+                        }
+                      }}
+                    >
+                      <div style={{ fontWeight: "bold" }}>{part.name}</div>
+                      <div style={{ fontSize: "12px", color: "#666" }}>
+                        Part #: {part.part_number} | Stock: {part.quantity} |
+                        Price: ${toNumber(part.price).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {loadingAvailableParts && (
+                <div
+                  style={{ marginTop: "8px", color: "#999", fontSize: "12px" }}
+                >
+                  Searching...
+                </div>
+              )}
+            </div>
+
+            {/* Selected Part Details */}
+            {selectedPart && (
+              <div
+                style={{
+                  padding: "12px",
+                  backgroundColor: "#f5f5f5",
+                  borderRadius: "4px",
+                  marginBottom: "12px",
+                }}
+              >
+                <p style={{ margin: "0 0 4px 0" }}>
+                  <strong>{selectedPart.name}</strong>
+                </p>
+                <p
+                  style={{
+                    margin: "0 0 4px 0",
+                    fontSize: "12px",
+                    color: "#666",
+                  }}
+                >
+                  Part #: {selectedPart.part_number}
+                </p>
+                <p
+                  style={{
+                    margin: "0 0 4px 0",
+                    fontSize: "12px",
+                    color: "#666",
+                  }}
+                >
+                  Available: {selectedPart.quantity} units
+                </p>
+                <p
+                  style={{ margin: "0", fontSize: "12px", fontWeight: "bold" }}
+                >
+                  Unit Price: ${toNumber(selectedPart.price).toFixed(2)}
+                </p>
+              </div>
+            )}
+
+            <div className="dialog-form-grid">
+              <div className="dialog-form-field">
+                <label className="dialog-field-label">Quantity *</label>
+                <Input
+                  className="dialog-input"
+                  type="number"
+                  value={partQuantity}
+                  onChange={(e) => setPartQuantity(Number(e.target.value))}
+                  placeholder="1"
+                  min="1"
+                  required
+                  disabled={!selectedPart}
+                />
+              </div>
+
+              {selectedPart && (
+                <div className="dialog-form-field">
+                  <label className="dialog-field-label">Total Price</label>
+                  <Input
+                    className="dialog-input"
+                    type="text"
+                    value={`$${(
+                      toNumber(selectedPart.price) * partQuantity
+                    ).toFixed(2)}`}
+                    disabled
+                  />
+                </div>
+              )}
+
+              <div
+                className="dialog-form-field dialog-field--full"
+                style={{ marginTop: "8px" }}
+              >
+                <label
+                  className="dialog-field-label"
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={includeInTotal}
+                    onChange={(e) => setIncludeInTotal(e.target.checked)}
+                    disabled={!selectedPart}
+                  />
+                  <span>Include in Order Total Cost</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="dialog-actions">
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowAddPart(false);
+                  setSelectedPart(null);
+                  setPartQuantity(1);
+                  setIncludeInTotal(false);
+                  setPartsSearchTerm("");
+                  setAvailableParts([]);
+                }}
+                className="dialog-btn dialog-btn--primary"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="dialog-btn dialog-btn--secondary"
+                disabled={!selectedPart || partQuantity <= 0 || isSubmitting}
+              >
+                {isSubmitting ? "Adding..." : "Add Part"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={showPayment}
         onOpenChange={(open) => {
@@ -1135,7 +1827,13 @@ export function OrderDetailView({
                 }}
               >
                 <span>Subtotal:</span>
-                <span>${toNumber(serviceOrder?.total_cost).toFixed(2)}</span>
+                <span>
+                  ${" "}
+                  {(
+                    toNumber(serviceOrder?.total_cost || 0) +
+                    invoiceItems.reduce((sum, item) => sum + item.cost, 0)
+                  ).toFixed(2)}
+                </span>
               </div>
               <div
                 style={{
@@ -1160,7 +1858,11 @@ export function OrderDetailView({
               >
                 <span>Total Due:</span>
                 <span style={{ color: "#1976d2" }}>
-                  ${toNumber(serviceOrder?.total_cost).toFixed(2)}
+                  ${" "}
+                  {(
+                    toNumber(serviceOrder?.total_cost || 0) +
+                    invoiceItems.reduce((sum, item) => sum + item.cost, 0)
+                  ).toFixed(2)}
                 </span>
               </div>
             </div>

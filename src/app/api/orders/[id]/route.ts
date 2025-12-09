@@ -72,6 +72,45 @@ export async function PUT(req: NextRequest, context: any) {
     const body = await req.json();
     const { issue, description, endDate, total_cost, priority, status } = body;
 
+    // If completing the order, automatically deduct warehouse parts
+    if (status === "COMPLETED") {
+      // Get all parts that need to be deducted
+      const partsToDeduct = await prisma.$queryRaw`
+        SELECT sop.*, p.quantity as part_quantity, p.name as part_name
+        FROM service_order_part sop
+        JOIN part p ON sop.part_id = p.id
+        WHERE sop.service_order_id = ${id}
+        AND sop.deduct_from_warehouse = true
+        AND sop.warehouse_deducted_at IS NULL
+      `;
+
+      // Deduct each part from warehouse
+      for (const orderPart of partsToDeduct as any[]) {
+        // Check if warehouse has enough quantity
+        if (orderPart.part_quantity < orderPart.quantity) {
+          return NextResponse.json(
+            {
+              error: `Cannot complete order: Insufficient quantity for part "${orderPart.part_name}". Available: ${orderPart.part_quantity}, Needed: ${orderPart.quantity}`,
+            },
+            { status: 400 }
+          );
+        }
+
+        // Deduct from warehouse
+        await prisma.part.update({
+          where: { id: orderPart.part_id },
+          data: {
+            quantity: {
+              decrement: orderPart.quantity,
+            },
+          },
+        });
+
+        // Mark as deducted
+        await prisma.$executeRaw`UPDATE service_order_part SET warehouse_deducted_at = NOW() WHERE id = ${orderPart.id}`;
+      }
+    }
+
     const updated = await prisma.service_order.update({
       where: { id },
       data: {
