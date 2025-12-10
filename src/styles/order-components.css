@@ -1,0 +1,293 @@
+/* Task Comments Dialog Styles */
+.comments-dialog-content {
+  max-width: 800px;
+}
+
+.comments-dialog-body {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.comment-form-container {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.comment-form-title {
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.comment-form-inputs {
+  margin-bottom: 10px;
+}
+
+.comment-title-input {
+  margin-bottom: 10px;
+}
+
+.comment-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.file-upload-section {
+  margin-bottom: 10px;
+}
+
+.file-upload-label {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #6c757d;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.file-upload-label.uploading {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.file-upload-input {
+  display: none;
+}
+
+.file-upload-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.uploaded-files-container {
+  margin-bottom: 10px;
+}
+
+.uploaded-files-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.uploaded-files-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.uploaded-file-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.uploaded-file-remove {
+  margin-left: 8px;
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.comment-submit-btn {
+  width: 100%;
+}
+
+.comments-list-title {
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.comments-loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.comments-empty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.comment-item {
+  padding: 15px;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.comment-author-name {
+  font-size: 14px;
+}
+
+.comment-title-text {
+  margin-left: 10px;
+  color: #666;
+  font-size: 13px;
+}
+
+.comment-timestamp {
+  font-size: 12px;
+  color: #999;
+}
+
+.comment-message {
+  font-size: 14px;
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+}
+
+.comment-attachments-section {
+  margin-top: 10px;
+}
+
+.comment-attachments-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.comment-attachments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.comment-attachment-link {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.comment-attachment-filename {
+  margin-left: 5px;
+}
+
+/* Warehouse Parts Section Styles */
+.parts-section-padding {
+  padding-top: 15px;
+}
+
+.parts-loading,
+.parts-empty {
+  text-align: center;
+  padding: 20px;
+}
+
+.parts-empty {
+  color: #999;
+}
+
+.parts-delete-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.parts-summary {
+  padding: 15px;
+  border-top: 1px solid #ddd;
+  text-align: right;
+}
+
+.parts-summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.parts-deduct-btn {
+  margin-top: 10px;
+  background-color: #ff9800;
+}
+
+/* Order Header Styles */
+.order-status-badge {
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.order-status-badge.clickable {
+  cursor: pointer;
+}
+
+.order-status-badge.disabled {
+  cursor: default;
+}
+
+/* Order Info Styles */
+.order-title-issue {
+  font-size: 14px;
+  margin-left: 10px;
+}
+
+.order-license-label {
+  color: white;
+  margin: 0px;
+}
+
+.order-license-value {
+  text-align: end;
+}
+
+/* Tasks Section Styles */
+.tasks-header {
+  margin-bottom: 10px;
+  margin-left: 5px;
+}
+
+.task-description-text {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #cccccc;
+}
+
+/* Utility Classes */
+.mb-10 {
+  margin-bottom: 10px;
+}
+
+.ml-5 {
+  margin-left: 5px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.p-20 {
+  padding: 20px;
+}

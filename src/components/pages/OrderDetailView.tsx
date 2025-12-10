@@ -131,6 +131,16 @@ export function OrderDetailView({
   const [partsSearchTerm, setPartsSearchTerm] = useState<string>("");
   const [loadingAvailableParts, setLoadingAvailableParts] = useState(false);
 
+  // Task comments state
+  const [showTaskComments, setShowTaskComments] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [taskComments, setTaskComments] = useState<any[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [commentTitle, setCommentTitle] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
   // Helper to convert Decimal/string to number
   const toNumber = (val: any): number => {
     if (val === null || val === undefined) return 0;
@@ -856,6 +866,112 @@ export function OrderDetailView({
     }
   }
 
+  // Task Comments Functions
+  function openTaskComments(task: any) {
+    setSelectedTask(task);
+    setShowTaskComments(true);
+    setNewComment("");
+    setCommentTitle("");
+    setUploadedFiles([]);
+    fetchTaskComments(task.id);
+  }
+
+  async function fetchTaskComments(taskId: number) {
+    if (!serviceOrder?.id) return;
+    setLoadingComments(true);
+    try {
+      const res = await fetch(
+        `/api/orders/${serviceOrder.id}/tasks/${taskId}/comments`
+      );
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      const comments = await res.json();
+      setTaskComments(comments);
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+      setTaskComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || !selectedTask || !serviceOrder?.id) return;
+
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(
+        `/api/orders/${serviceOrder.id}/tasks/${selectedTask.id}/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to upload file");
+      }
+
+      const uploadedFile = await res.json();
+      setUploadedFiles((prev) => [...prev, uploadedFile]);
+      alert("File uploaded successfully!");
+    } catch (err: any) {
+      console.error("Error uploading file:", err);
+      alert(`Failed to upload file: ${err.message}`);
+    } finally {
+      setUploadingFile(false);
+      // Reset file input
+      e.target.value = "";
+    }
+  }
+
+  function removeUploadedFile(fileId: number) {
+    setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
+  }
+
+  async function handleAddComment() {
+    if (!selectedTask || !serviceOrder?.id || !newComment.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/orders/${serviceOrder.id}/tasks/${selectedTask.id}/comments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: newComment,
+            title: commentTitle || null,
+            documentIds: uploadedFiles.map((f) => f.id),
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to add comment");
+      }
+
+      const newCommentData = await res.json();
+      setTaskComments((prev) => [newCommentData, ...prev]);
+      setNewComment("");
+      setCommentTitle("");
+      setUploadedFiles([]);
+      alert("Comment added successfully!");
+    } catch (err: any) {
+      console.error("Error adding comment:", err);
+      alert(`Failed to add comment: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const statusMap: Record<StatusServiceOrder, string> = {
     NEW: "grafic-new",
     IN_PROGRESS: "grafic-in_progress",
@@ -1116,6 +1232,18 @@ export function OrderDetailView({
                   </div>
                   {isTerminalStatus(serviceOrder?.status) ? null : (
                     <div className="customer-actions">
+                      {session?.user?.role === "ADMIN" && (
+                        <button
+                          className="icon-btn icon-btn--edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openTaskComments(task);
+                          }}
+                          title="View Comments"
+                        >
+                          <Mail className="icon-xxx" />
+                        </button>
+                      )}
                       <button
                         className="icon-btn icon-btn--edit"
                         onClick={(e) => {
@@ -2541,6 +2669,329 @@ export function OrderDetailView({
                 Close
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Comments Dialog */}
+      <Dialog
+        open={showTaskComments}
+        onOpenChange={(open) => {
+          setShowTaskComments(open);
+          if (!open) {
+            setSelectedTask(null);
+            setTaskComments([]);
+            setNewComment("");
+            setCommentTitle("");
+            setUploadedFiles([]);
+          }
+        }}
+      >
+        <DialogContent className="dialog-content" style={{ maxWidth: "800px" }}>
+          <DialogHeader>
+            <DialogTitle className="dialog-title">
+              Task Comments: {selectedTask?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div
+            className="dialog-body"
+            style={{ maxHeight: "600px", overflowY: "auto" }}
+          >
+            {/* Add Comment Form - Only for Admin */}
+            {session?.user?.role === "ADMIN" && (
+              <div
+                style={{
+                  marginBottom: "20px",
+                  padding: "15px",
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: "8px",
+                }}
+              >
+                <h4
+                  style={{
+                    marginBottom: "10px",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                  }}
+                >
+                  Add Comment
+                </h4>
+                <div style={{ marginBottom: "10px" }}>
+                  <Input
+                    placeholder="Comment title (optional)"
+                    value={commentTitle}
+                    onChange={(e) => setCommentTitle(e.target.value)}
+                    style={{ marginBottom: "10px" }}
+                  />
+                  <textarea
+                    placeholder="Write your comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    style={{
+                      width: "100%",
+                      minHeight: "100px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      fontSize: "14px",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+
+                {/* File Upload */}
+                <div style={{ marginBottom: "10px" }}>
+                  <label
+                    htmlFor="comment-file-upload"
+                    style={{
+                      display: "inline-block",
+                      padding: "8px 16px",
+                      backgroundColor: "#6c757d",
+                      color: "white",
+                      borderRadius: "4px",
+                      cursor: uploadingFile ? "not-allowed" : "pointer",
+                      opacity: uploadingFile ? 0.6 : 1,
+                    }}
+                  >
+                    {uploadingFile ? "Uploading..." : "Attach File/Video"}
+                  </label>
+                  <input
+                    id="comment-file-upload"
+                    type="file"
+                    accept="image/*,video/*,.pdf,.doc,.docx"
+                    onChange={handleFileUpload}
+                    disabled={uploadingFile}
+                    style={{ display: "none" }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "#666",
+                      marginTop: "5px",
+                    }}
+                  >
+                    Supported: Images, Videos, PDF, Word documents (Max 50MB)
+                  </p>
+                </div>
+
+                {/* Uploaded Files Preview */}
+                {uploadedFiles.length > 0 && (
+                  <div style={{ marginBottom: "10px" }}>
+                    <p
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        marginBottom: "5px",
+                      }}
+                    >
+                      Attached Files:
+                    </p>
+                    <div
+                      style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}
+                    >
+                      {uploadedFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            padding: "5px 10px",
+                            backgroundColor: "#e9ecef",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          <span>{file.filename}</span>
+                          <button
+                            onClick={() => removeUploadedFile(file.id)}
+                            style={{
+                              marginLeft: "8px",
+                              background: "none",
+                              border: "none",
+                              color: "#dc3545",
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim() || isSubmitting}
+                  className="dialog-btn dialog-btn--primary"
+                  style={{ width: "100%" }}
+                >
+                  {isSubmitting ? "Adding..." : "Add Comment"}
+                </Button>
+              </div>
+            )}
+
+            {/* Comments List */}
+            <div>
+              <h4
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                }}
+              >
+                Comments ({taskComments.length})
+              </h4>
+              {loadingComments ? (
+                <p
+                  style={{
+                    textAlign: "center",
+                    padding: "20px",
+                    color: "#666",
+                  }}
+                >
+                  Loading comments...
+                </p>
+              ) : taskComments.length === 0 ? (
+                <p
+                  style={{
+                    textAlign: "center",
+                    padding: "20px",
+                    color: "#999",
+                  }}
+                >
+                  No comments yet. Be the first to add one!
+                </p>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "15px",
+                  }}
+                >
+                  {taskComments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      style={{
+                        padding: "15px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #dee2e6",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <div>
+                          <strong style={{ fontSize: "14px" }}>
+                            {comment.employees?.users?.first_name ||
+                              comment.admin_author?.first_name ||
+                              "Unknown"}{" "}
+                            {comment.employees?.users?.last_name ||
+                              comment.admin_author?.last_name ||
+                              "User"}
+                          </strong>
+                          {comment.title && (
+                            <span
+                              style={{
+                                marginLeft: "10px",
+                                color: "#666",
+                                fontSize: "13px",
+                              }}
+                            >
+                              - {comment.title}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "12px", color: "#999" }}>
+                          {new Date(comment.created_at).toLocaleString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
+                        </span>
+                      </div>
+                      <p
+                        style={{
+                          fontSize: "14px",
+                          marginBottom: "10px",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {comment.message}
+                      </p>
+
+                      {/* Attached Documents */}
+                      {comment.document && comment.document.length > 0 && (
+                        <div style={{ marginTop: "10px" }}>
+                          <p
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              marginBottom: "5px",
+                            }}
+                          >
+                            Attachments:
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "10px",
+                            }}
+                          >
+                            {comment.document.map((doc: any) => (
+                              <a
+                                key={doc.id}
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  padding: "5px 10px",
+                                  backgroundColor: "#007bff",
+                                  color: "white",
+                                  borderRadius: "4px",
+                                  fontSize: "12px",
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {doc.type === "PHOTO" && "📷"}
+                                {doc.type === "VIDEO" && "🎥"}
+                                {doc.type === "DOCUMENT" && "📄"}
+                                <span style={{ marginLeft: "5px" }}>
+                                  {doc.filename}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="dialog-actions">
+            <Button
+              className="dialog-btn dialog-btn--secondary"
+              onClick={() => setShowTaskComments(false)}
+            >
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
