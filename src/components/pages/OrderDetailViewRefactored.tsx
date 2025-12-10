@@ -186,6 +186,7 @@ export function OrderDetailView({
         onFileUpload={commentsHook.handleFileUpload}
         onRemoveFile={commentsHook.removeUploadedFile}
         onAddComment={commentsHook.handleAddComment}
+        onDeleteComment={commentsHook.handleDeleteComment}
       />
 
       {/* TODO: Add dialogs for Edit Order, Status Change, Add Part, etc. */}

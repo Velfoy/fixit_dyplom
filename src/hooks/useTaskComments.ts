@@ -122,6 +122,37 @@ export function useTaskComments(serviceOrder: Order | null) {
     }
   }, [selectedTask, serviceOrder?.id, newComment, commentTitle, uploadedFiles]);
 
+  const handleDeleteComment = useCallback(
+    async (commentId: number) => {
+      if (!serviceOrder?.id || !selectedTask) return;
+
+      if (!confirm("Are you sure you want to delete this comment?")) {
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/orders/${serviceOrder.id}/tasks/${selectedTask.id}/comments?commentId=${commentId}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Failed to delete comment");
+        }
+
+        setTaskComments((prev) => prev.filter((c) => c.id !== commentId));
+        alert("Comment deleted successfully!");
+      } catch (err: any) {
+        console.error("Error deleting comment:", err);
+        alert(`Failed to delete comment: ${err.message}`);
+      }
+    },
+    [selectedTask, serviceOrder?.id]
+  );
+
   return {
     showTaskComments,
     setShowTaskComments,
@@ -143,5 +174,6 @@ export function useTaskComments(serviceOrder: Order | null) {
     handleFileUpload,
     removeUploadedFile,
     handleAddComment,
+    handleDeleteComment,
   };
 }

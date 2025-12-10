@@ -140,6 +140,9 @@ export function OrderDetailView({
   const [commentTitle, setCommentTitle] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<number | null>(
+    null
+  );
 
   // Helper to convert Decimal/string to number
   const toNumber = (val: any): number => {
@@ -891,6 +894,43 @@ export function OrderDetailView({
       setTaskComments([]);
     } finally {
       setLoadingComments(false);
+    }
+  }
+
+  const isCommentOwner = (comment: any) => {
+    const currentUserId = Number(session?.user?.id || 0);
+    if (!currentUserId) return false;
+    return (
+      comment?.employees?.users?.id === currentUserId ||
+      comment?.author?.id === currentUserId
+    );
+  };
+
+  async function handleDeleteComment(commentId: number) {
+    if (!serviceOrder?.id || !selectedTask) return;
+    if (!confirm("Czy na pewno chcesz usunąć ten komentarz?")) return;
+
+    setDeletingCommentId(commentId);
+    try {
+      const res = await fetch(
+        `/api/orders/${serviceOrder.id}/tasks/${selectedTask.id}/comments?commentId=${commentId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to delete comment");
+      }
+
+      setTaskComments((prev) => prev.filter((c) => c.id !== commentId));
+      alert("Komentarz został usunięty");
+    } catch (err: any) {
+      console.error("Error deleting comment:", err);
+      alert(`Nie udało się usunąć komentarza: ${err.message}`);
+    } finally {
+      setDeletingCommentId(null);
     }
   }
 
@@ -2687,70 +2727,112 @@ export function OrderDetailView({
           }
         }}
       >
-        <DialogContent className="dialog-content" style={{ maxWidth: "800px" }}>
+        <DialogContent
+          className="dialog-content"
+          style={{
+            maxWidth: "850px",
+            overflowY: "scroll",
+            overflowX: "hidden",
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="dialog-title">
               Task Comments: {selectedTask?.title}
             </DialogTitle>
           </DialogHeader>
-          <div
-            className="dialog-body"
-            style={{ maxHeight: "600px", overflowY: "auto" }}
-          >
+          <div className="dialog-body" style={{ padding: "10px" }}>
             {/* Add Comment Form - Only for Admin */}
             {session?.user?.role === "ADMIN" && (
               <div
                 style={{
-                  marginBottom: "20px",
-                  padding: "15px",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: "8px",
+                  padding: "20px",
+                  background:
+                    "linear-gradient(135deg, #0f0f0fff 0%, #242424ff 100%)",
+                  borderRadius: "12px",
+                  boxShadow: "0 4px 15px rgba(102, 126, 234, 0.2)",
                 }}
               >
                 <h4
                   style={{
-                    marginBottom: "10px",
+                    marginBottom: "15px",
                     fontSize: "16px",
-                    fontWeight: "600",
+                    fontWeight: "700",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0px",
+                    marginTop: "0px",
                   }}
                 >
-                  Add Comment
+                  ✏️ Add Comment
                 </h4>
-                <div style={{ marginBottom: "10px" }}>
+                <div style={{ marginBottom: "14px" }}>
                   <Input
                     placeholder="Comment title (optional)"
                     value={commentTitle}
                     onChange={(e) => setCommentTitle(e.target.value)}
-                    style={{ marginBottom: "10px" }}
+                    style={{
+                      marginBottom: "12px",
+                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      border: "1px solid rgba(255, 255, 255, 0.3)",
+                      borderRadius: "6px",
+                      padding: "10px 12px",
+                      fontSize: "14px",
+                      color: "#333",
+                    }}
                   />
                   <textarea
                     placeholder="Write your comment..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     style={{
-                      width: "100%",
-                      minHeight: "100px",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
+                      width: "-webkit-fill-available",
+                      minHeight: "110px",
+                      padding: "12px",
+                      border: "1px solid rgba(255, 255, 255, 0.3)",
+                      borderRadius: "6px",
                       fontSize: "14px",
                       resize: "vertical",
+                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      color: "#333",
+                      fontFamily: "inherit",
+                      lineHeight: "1.5",
                     }}
                   />
                 </div>
 
                 {/* File Upload */}
-                <div style={{ marginBottom: "10px" }}>
+                <div style={{ marginBottom: "14px" }}>
                   <label
                     htmlFor="comment-file-upload"
                     style={{
                       display: "inline-block",
                       padding: "8px 16px",
-                      backgroundColor: "#6c757d",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
                       color: "white",
-                      borderRadius: "4px",
+                      border: "2px solid rgba(255, 255, 255, 0.4)",
+                      borderRadius: "6px",
                       cursor: uploadingFile ? "not-allowed" : "pointer",
+                      fontWeight: "600",
+                      fontSize: "13px",
+                      transition: "all 0.3s ease",
                       opacity: uploadingFile ? 0.6 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!uploadingFile) {
+                        e.currentTarget.style.backgroundColor =
+                          "rgba(255, 255, 255, 0.3)";
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.6)";
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        "rgba(255, 255, 255, 0.2)";
+                      e.currentTarget.style.borderColor =
+                        "rgba(255, 255, 255, 0.4)";
+                      e.currentTarget.style.transform = "none";
                     }}
                   >
                     {uploadingFile ? "Uploading..." : "Attach File/Video"}
@@ -2766,8 +2848,8 @@ export function OrderDetailView({
                   <p
                     style={{
                       fontSize: "12px",
-                      color: "#666",
-                      marginTop: "5px",
+                      color: "rgba(255, 255, 255, 0.8)",
+                      marginTop: "6px",
                     }}
                   >
                     Supported: Images, Videos, PDF, Word documents (Max 50MB)
@@ -2776,18 +2858,28 @@ export function OrderDetailView({
 
                 {/* Uploaded Files Preview */}
                 {uploadedFiles.length > 0 && (
-                  <div style={{ marginBottom: "10px" }}>
+                  <div
+                    style={{
+                      marginBottom: "14px",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                      padding: "10px",
+                      borderRadius: "6px",
+                    }}
+                  >
                     <p
                       style={{
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        marginBottom: "5px",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        marginBottom: "8px",
+                        color: "rgba(255, 255, 255, 0.9)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
                       }}
                     >
                       Attached Files:
                     </p>
                     <div
-                      style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}
+                      style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
                     >
                       {uploadedFiles.map((file) => (
                         <div
@@ -2795,22 +2887,24 @@ export function OrderDetailView({
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            padding: "5px 10px",
-                            backgroundColor: "#e9ecef",
+                            padding: "6px 10px",
+                            backgroundColor: "rgba(255, 255, 255, 0.15)",
                             borderRadius: "4px",
                             fontSize: "12px",
+                            color: "#fff",
                           }}
                         >
                           <span>{file.filename}</span>
                           <button
                             onClick={() => removeUploadedFile(file.id)}
                             style={{
-                              marginLeft: "8px",
+                              marginLeft: "6px",
                               background: "none",
                               border: "none",
-                              color: "#dc3545",
+                              color: "#fff",
                               cursor: "pointer",
                               fontWeight: "bold",
+                              fontSize: "16px",
                             }}
                           >
                             ×
@@ -2825,7 +2919,14 @@ export function OrderDetailView({
                   onClick={handleAddComment}
                   disabled={!newComment.trim() || isSubmitting}
                   className="dialog-btn dialog-btn--primary"
-                  style={{ width: "100%" }}
+                  style={{
+                    width: "100%",
+                    backgroundColor: "rgba(255, 255, 255, 0.25)",
+                    color: "white",
+                    border: "2px solid rgba(255, 255, 255, 0.4)",
+                    fontWeight: "700",
+                    transition: "all 0.3s ease",
+                  }}
                 >
                   {isSubmitting ? "Adding..." : "Add Comment"}
                 </Button>
@@ -2836,19 +2937,26 @@ export function OrderDetailView({
             <div>
               <h4
                 style={{
-                  marginBottom: "15px",
+                  marginBottom: "18px",
+                  paddingBottom: "12px",
                   fontSize: "16px",
-                  fontWeight: "600",
+                  fontWeight: "700",
+                  color: "#212529",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  borderBottom: "3px solid #0f0f0fff",
                 }}
               >
-                Comments ({taskComments.length})
+                💬 Comments ({taskComments.length})
               </h4>
               {loadingComments ? (
                 <p
                   style={{
                     textAlign: "center",
-                    padding: "20px",
-                    color: "#666",
+                    padding: "30px 20px",
+                    color: "#999",
+                    fontSize: "14px",
                   }}
                 >
                   Loading comments...
@@ -2857,8 +2965,10 @@ export function OrderDetailView({
                 <p
                   style={{
                     textAlign: "center",
-                    padding: "20px",
+                    padding: "30px 20px",
                     color: "#999",
+                    fontStyle: "italic",
+                    fontSize: "14px",
                   }}
                 >
                   No comments yet. Be the first to add one!
@@ -2868,119 +2978,293 @@ export function OrderDetailView({
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "15px",
+                    gap: "14px",
                   }}
                 >
-                  {taskComments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      style={{
-                        padding: "15px",
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #dee2e6",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        <div>
-                          <strong style={{ fontSize: "14px" }}>
-                            {comment.employees?.users?.first_name ||
-                              comment.admin_author?.first_name ||
-                              "Unknown"}{" "}
-                            {comment.employees?.users?.last_name ||
-                              comment.admin_author?.last_name ||
-                              "User"}
-                          </strong>
-                          {comment.title && (
-                            <span
-                              style={{
-                                marginLeft: "10px",
-                                color: "#666",
-                                fontSize: "13px",
-                              }}
-                            >
-                              - {comment.title}
-                            </span>
-                          )}
-                        </div>
-                        <span style={{ fontSize: "12px", color: "#999" }}>
-                          {new Date(comment.created_at).toLocaleString(
-                            "en-US",
-                            {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }
-                          )}
-                        </span>
-                      </div>
-                      <p
-                        style={{
-                          fontSize: "14px",
-                          marginBottom: "10px",
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        {comment.message}
-                      </p>
+                  {taskComments.map((comment) => {
+                    const author = comment.author ||
+                      comment.employees?.users ||
+                      comment.admin_author || {
+                        first_name: "Unknown",
+                        last_name: "User",
+                        email: "",
+                      };
 
-                      {/* Attached Documents */}
-                      {comment.document && comment.document.length > 0 && (
-                        <div style={{ marginTop: "10px" }}>
-                          <p
-                            style={{
-                              fontSize: "12px",
-                              fontWeight: "600",
-                              marginBottom: "5px",
-                            }}
-                          >
-                            Attachments:
-                          </p>
+                    return (
+                      <div
+                        key={comment.id}
+                        style={{
+                          padding: "16px",
+                          background:
+                            "linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)",
+                          border: "2px solid #0f0f0fff",
+                          borderRadius: "10px",
+                          transition: "all 0.3s ease",
+                          position: "relative",
+                          overflow: "hidden",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow =
+                            "0 4px 12px rgba(102, 126, 234, 0.15)";
+                          e.currentTarget.style.borderColor = "#0f0f0fff";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = "none";
+                          e.currentTarget.style.borderColor =
+                            "rgba(92, 92, 92, 1)";
+                        }}
+                      >
+                        {/* Top gradient stripe */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: "3px",
+                            background:
+                              "linear-gradient(90deg, #0f0f0fff 0%, #242424ff 100%)",
+                          }}
+                        />
+
+                        {/* Comment header with author info */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            marginBottom: "14px",
+                            gap: "12px",
+                          }}
+                        >
                           <div
                             style={{
+                              flex: 1,
                               display: "flex",
-                              flexWrap: "wrap",
-                              gap: "10px",
+                              flexDirection: "column",
+                              gap: "8px",
                             }}
                           >
-                            {comment.document.map((doc: any) => (
-                              <a
-                                key={doc.id}
-                                href={doc.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            {/* Author name and title */}
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                alignItems: "baseline",
+                                gap: "8px",
+                              }}
+                            >
+                              <strong
                                 style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  padding: "5px 10px",
-                                  backgroundColor: "#007bff",
-                                  color: "white",
+                                  fontSize: "16px",
+                                  fontWeight: "700",
+                                  color: "#242424ff",
+                                  padding: "2px 6px",
+                                  backgroundColor: "rgba(102, 126, 234, 0.08)",
                                   borderRadius: "4px",
-                                  fontSize: "12px",
-                                  textDecoration: "none",
                                 }}
                               >
-                                {doc.type === "PHOTO" && "📷"}
-                                {doc.type === "VIDEO" && "🎥"}
-                                {doc.type === "DOCUMENT" && "📄"}
-                                <span style={{ marginLeft: "5px" }}>
-                                  {doc.filename}
+                                {author.first_name || "Unknown"}{" "}
+                                {author.last_name || "User"}
+                              </strong>
+                              {comment.title && (
+                                <span
+                                  style={{
+                                    color: "#0c080fff",
+                                    fontSize: "13px",
+                                    fontStyle: "italic",
+                                    fontWeight: "600",
+                                    padding: "2px 6px",
+                                    backgroundColor: "rgba(118, 75, 162, 0.08)",
+                                    borderRadius: "4px",
+                                  }}
+                                >
+                                  - {comment.title}
                                 </span>
-                              </a>
-                            ))}
+                              )}
+                            </div>
+
+                            {/* Meta info (timestamp and email) */}
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "16px",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                padding: "8px",
+                                backgroundColor: "rgba(255, 255, 255, 0.6)",
+                                borderRadius: "6px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: "12px",
+                                  color: "#242424ff",
+                                  fontWeight: "600",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                }}
+                              >
+                                🕐{" "}
+                                {new Date(comment.created_at).toLocaleString(
+                                  "en-US",
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </span>
+                              {(comment.employees?.users?.email ||
+                                comment.admin_author?.email ||
+                                author?.email) && (
+                                <span
+                                  style={{
+                                    fontSize: "12px",
+                                    color: "#764ba2",
+                                    textDecoration: "none",
+                                    fontWeight: "600",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  ✉️{" "}
+                                  {author?.email ||
+                                    comment.employees?.users?.email ||
+                                    comment.admin_author?.email}
+                                </span>
+                              )}
+                            </div>
                           </div>
+
+                          {isCommentOwner(comment) && (
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              disabled={deletingCommentId === comment.id}
+                              style={{
+                                border: "none",
+                                background: "rgba(15,15,15,0.85)",
+                                color: "white",
+                                padding: "8px 10px",
+                                borderRadius: "8px",
+                                cursor:
+                                  deletingCommentId === comment.id
+                                    ? "not-allowed"
+                                    : "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                fontWeight: 700,
+                                boxShadow: "0 4px 10px rgba(15,15,15,0.25)",
+                                transition: "all 0.2s ease",
+                              }}
+                            >
+                              <Trash size={16} />
+                              {deletingCommentId === comment.id
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {/* Comment message */}
+                        <p
+                          style={{
+                            fontSize: "14px",
+                            marginBottom: "12px",
+                            whiteSpace: "pre-wrap",
+                            color: "#333",
+                            lineHeight: "1.6",
+                            padding: "12px",
+                            backgroundColor: "rgba(255, 255, 255, 0.7)",
+                            borderLeft: "3px solid #242424ff",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {comment.message}
+                        </p>
+
+                        {/* Attached Documents */}
+                        {comment.document && comment.document.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: "12px",
+                              padding: "12px",
+                              backgroundColor: "rgba(102, 126, 234, 0.08)",
+                              borderRadius: "6px",
+                              borderLeft: "3px solid #242424ff",
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontSize: "11px",
+                                fontWeight: "700",
+                                marginBottom: "8px",
+                                color: "#242424ff",
+                                textTransform: "uppercase",
+                                letterSpacing: "1px",
+                              }}
+                            >
+                              Attachments:
+                            </p>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: "8px",
+                              }}
+                            >
+                              {comment.document.map((doc: any) => (
+                                <a
+                                  key={doc.id}
+                                  href={doc.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    padding: "6px 12px",
+                                    background:
+                                      "linear-gradient(135deg, #242424ff 0%, #764ba2 100%)",
+                                    color: "white",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    textDecoration: "none",
+                                    transition: "all 0.2s ease",
+                                    fontWeight: "600",
+                                    boxShadow:
+                                      "0 2px 6px rgba(102, 126, 234, 0.3)",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform =
+                                      "translateY(-2px)";
+                                    e.currentTarget.style.boxShadow =
+                                      "0 4px 10px rgba(102, 126, 234, 0.4)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = "none";
+                                    e.currentTarget.style.boxShadow =
+                                      "0 2px 6px rgba(102, 126, 234, 0.3)";
+                                  }}
+                                >
+                                  {doc.type === "PHOTO" && "📷"}
+                                  {doc.type === "VIDEO" && "🎥"}
+                                  {doc.type === "DOCUMENT" && "📄"}
+                                  <span style={{ marginLeft: "6px" }}>
+                                    {doc.filename}
+                                  </span>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

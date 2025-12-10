@@ -1,55 +1,94 @@
 /* Task Comments Dialog Styles */
 .comments-dialog-content {
-  max-width: 800px;
+  max-width: 850px;
 }
 
 .comments-dialog-body {
-  max-height: 600px;
+  max-height: 700px;
   overflow-y: auto;
+  padding: 10px;
 }
 
 .comment-form-container {
-  margin-bottom: 20px;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
 }
 
 .comment-form-title {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comment-form-title::before {
+  content: "✏️";
+  font-size: 18px;
 }
 
 .comment-form-inputs {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .comment-title-input {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #333;
+}
+
+.comment-title-input::placeholder {
+  color: #999;
 }
 
 .comment-textarea {
   width: 100%;
-  min-height: 100px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  min-height: 110px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
   font-size: 14px;
   resize: vertical;
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #333;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.comment-textarea::placeholder {
+  color: #999;
 }
 
 .file-upload-section {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .file-upload-label {
   display: inline-block;
   padding: 8px 16px;
-  background-color: #6c757d;
+  background-color: rgba(255, 255, 255, 0.2);
   color: white;
-  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.file-upload-label:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
 }
 
 .file-upload-label.uploading {
@@ -63,135 +102,301 @@
 
 .file-upload-hint {
   font-size: 12px;
-  color: #666;
-  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 6px;
 }
 
 .uploaded-files-container {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 6px;
 }
 
 .uploaded-files-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .uploaded-files-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .uploaded-file-item {
   display: flex;
   align-items: center;
-  padding: 5px 10px;
-  background-color: #e9ecef;
+  padding: 6px 10px;
+  background-color: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   font-size: 12px;
+  color: #fff;
 }
 
 .uploaded-file-remove {
-  margin-left: 8px;
+  margin-left: 6px;
   background: none;
   border: none;
-  color: #dc3545;
+  color: #fff;
   cursor: pointer;
   font-weight: bold;
+  font-size: 16px;
 }
 
 .comment-submit-btn {
   width: 100%;
+  background-color: rgba(255, 255, 255, 0.25);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.comment-submit-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .comments-list-title {
-  margin-bottom: 15px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
+  color: #212529;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 3px solid #667eea;
+}
+
+.comments-list-title::before {
+  content: "💬";
+  font-size: 20px;
 }
 
 .comments-loading {
   text-align: center;
-  padding: 20px;
-  color: #666;
+  padding: 30px 20px;
+  color: #999;
+  font-size: 14px;
 }
 
 .comments-empty {
   text-align: center;
-  padding: 20px;
+  padding: 30px 20px;
   color: #999;
+  font-style: italic;
+  font-size: 14px;
 }
 
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
 }
 
 .comment-item {
-  padding: 15px;
-  background-color: #ffffff;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  border: 2px solid #667eea;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.comment-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.comment-item:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  border-color: #764ba2;
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  gap: 12px;
+  padding-left: 0;
+}
+
+.comment-author-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-author-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .comment-author-name {
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #667eea;
+  padding: 2px 6px;
+  background-color: rgba(102, 126, 234, 0.08);
+  border-radius: 4px;
 }
 
 .comment-title-text {
-  margin-left: 10px;
-  color: #666;
+  color: #764ba2;
   font-size: 13px;
+  font-style: italic;
+  font-weight: 600;
+  padding: 2px 6px;
+  background-color: rgba(118, 75, 162, 0.08);
+  border-radius: 4px;
+}
+
+.comment-meta-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
 }
 
 .comment-timestamp {
   font-size: 12px;
-  color: #999;
+  color: #667eea;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.comment-timestamp::before {
+  content: "🕐";
+  font-size: 13px;
+}
+
+.comment-email {
+  font-size: 12px;
+  color: #764ba2;
+  text-decoration: none;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.comment-email::before {
+  content: "✉️";
+  font-size: 13px;
+}
+
+.comment-delete-btn {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-weight: bold;
+  padding: 0;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+.comment-delete-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.comment-delete-btn:active {
+  transform: scale(0.95);
 }
 
 .comment-message {
   font-size: 14px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   white-space: pre-wrap;
+  color: #333;
+  line-height: 1.6;
+  padding: 12px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
 }
 
 .comment-attachments-section {
-  margin-top: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  background-color: rgba(102, 126, 234, 0.08);
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
 }
 
 .comment-attachments-title {
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .comment-attachments-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .comment-attachment-link {
   display: flex;
   align-items: center;
-  padding: 5px 10px;
-  background-color: #007bff;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 12px;
   text-decoration: none;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comment-attachment-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .comment-attachment-filename {
-  margin-left: 5px;
+  margin-left: 6px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Warehouse Parts Section Styles */

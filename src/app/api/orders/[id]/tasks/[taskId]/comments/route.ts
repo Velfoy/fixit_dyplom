@@ -35,6 +35,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
             },
           },
         },
+        author: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+          },
+        },
         document: {
           select: {
             id: true,
@@ -51,25 +59,19 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       orderBy: { created_at: "desc" },
     });
 
-    // For comments without employee records (admin comments),
-    // we need to fetch user info separately
-    const enrichedComments = await Promise.all(
-      comments.map(async (comment) => {
-        if (!comment.employees && comment.mechanic_id === null) {
-          // This is likely an admin comment, try to find user info from logs or other means
-          // For now, return with "Admin" as the author
-          return {
-            ...comment,
-            admin_author: {
-              first_name: "Admin",
-              last_name: "User",
-              email: "",
-            },
-          };
-        }
-        return comment;
-      })
-    );
+    const enrichedComments = comments.map((comment) => {
+      const author = comment.employees?.users ||
+        comment.author || {
+          first_name: "Admin",
+          last_name: "User",
+          email: "",
+        };
+
+      return {
+        ...comment,
+        author,
+      };
+    });
 
     return NextResponse.json(enrichedComments);
   } catch (error) {
@@ -121,10 +123,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     });
 
     // Create comment
+    const authorId = parseInt(session.user.id || "0");
+
     const comment = await prisma.service_task_comment.create({
       data: {
         service_task_id: taskIdNum,
         mechanic_id: employee?.id || null,
+        created_by_user_id: authorId || null,
         message: message.trim(),
         title: title?.trim() || null,
         status: status || null,
@@ -135,11 +140,20 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           include: {
             users: {
               select: {
+                id: true,
                 first_name: true,
                 last_name: true,
                 email: true,
               },
             },
+          },
+        },
+        author: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
           },
         },
         document: true,
@@ -165,6 +179,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
             include: {
               users: {
                 select: {
+                  id: true,
                   first_name: true,
                   last_name: true,
                   email: true,
@@ -172,40 +187,129 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
               },
             },
           },
+          author: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+            },
+          },
           document: true,
         },
       });
 
-      // Add admin author info if no employee record
-      if (!updatedComment?.employees) {
-        return NextResponse.json({
-          ...updatedComment,
-          admin_author: {
-            first_name: "Admin",
-            last_name: "User",
-            email: session.user.email || "",
-          },
-        });
-      }
-      return NextResponse.json(updatedComment);
-    }
-
-    // Add admin author info if no employee record
-    if (!comment.employees) {
-      return NextResponse.json({
-        ...comment,
-        admin_author: {
-          first_name: "Admin",
-          last_name: "User",
+      const author = updatedComment?.employees?.users ||
+        updatedComment?.author || {
+          first_name: session.user.name?.split(" ")[0] || "",
+          last_name: session.user.name?.split(" ").slice(1).join(" ") || "User",
           email: session.user.email || "",
-        },
+          id: authorId || null,
+        };
+
+      return NextResponse.json({
+        ...updatedComment,
+        author,
       });
     }
-    return NextResponse.json(comment);
+
+    const author = comment.employees?.users ||
+      comment.author || {
+        first_name: session.user.name?.split(" ")[0] || "",
+        last_name: session.user.name?.split(" ").slice(1).join(" ") || "User",
+        email: session.user.email || "",
+        id: authorId || null,
+      };
+
+    return NextResponse.json({
+      ...comment,
+      author,
+    });
   } catch (error) {
     console.error("Error creating task comment:", error);
     return NextResponse.json(
       { error: "Failed to create comment" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - delete a comment (only by the user who created it)
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { taskId } = await params;
+    const url = new URL(req.url);
+    const commentId = url.searchParams.get("commentId");
+
+    if (!commentId || isNaN(parseInt(commentId))) {
+      return NextResponse.json(
+        { error: "Invalid comment ID" },
+        { status: 400 }
+      );
+    }
+
+    const taskIdNum = parseInt(taskId);
+    if (isNaN(taskIdNum)) {
+      return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
+    }
+
+    const commentIdNum = parseInt(commentId);
+
+    // Fetch the comment to verify ownership
+    const comment = await prisma.service_task_comment.findUnique({
+      where: { id: commentIdNum },
+      include: {
+        employees: {
+          include: {
+            users: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+        author: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!comment) {
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+    }
+
+    // Verify that the current user is the creator of the comment
+    const currentUserId = parseInt(session.user.id || "0");
+    const commentCreatorId =
+      comment.employees?.users?.id || comment.author?.id || null;
+
+    if (!commentCreatorId || commentCreatorId !== currentUserId) {
+      return NextResponse.json(
+        { error: "You can only delete your own comments" },
+        { status: 403 }
+      );
+    }
+
+    // Delete the comment (documents should be handled by cascade delete in the database)
+    await prisma.service_task_comment.delete({
+      where: { id: commentIdNum },
+    });
+
+    return NextResponse.json(
+      { message: "Comment deleted successfully" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error deleting task comment:", error);
+    return NextResponse.json(
+      { error: "Failed to delete comment" },
       { status: 500 }
     );
   }
