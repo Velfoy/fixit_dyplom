@@ -2,6 +2,7 @@ import React from "react";
 import { authorizePage } from "@/lib/authorize";
 import CarsView from "@/components/pages/CarsView";
 import type { Car } from "@/types/car";
+import { headers } from "next/headers";
 
 interface Customer {
   id: number;
@@ -53,7 +54,40 @@ const Cars = async () => {
         />
       );
     }
+  } else if (session?.user?.role === "CLIENT") {
+    try {
+      const h = await headers();
+      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+      const url = new URL("/api/cars/user", baseUrl).toString();
+      const carsRes = await fetch(url, {
+        cache: "no-store",
+        headers: Object.fromEntries(h.entries()),
+      });
+      const cars: Car[] = carsRes.ok ? await carsRes.json() : [];
+
+      return (
+        <CarsView
+          dataCars={cars}
+          session={session}
+          branches={[]}
+          customers={[]}
+        />
+      );
+    } catch (error) {
+      console.error(error);
+      return (
+        <CarsView
+          dataCars={[]}
+          session={session}
+          branches={[]}
+          customers={[]}
+        />
+      );
+    }
   } else {
+    return (
+      <CarsView dataCars={[]} session={session} branches={[]} customers={[]} />
+    );
   }
 };
 

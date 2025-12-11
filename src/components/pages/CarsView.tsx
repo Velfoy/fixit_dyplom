@@ -241,10 +241,12 @@ export default function CarsView({
           <h1 className="customers-title">Car Management</h1>
           <p className="customers-subtitle">Manage and track car information</p>
         </div>
-        <Button onClick={openAddModal} className="add-customer-btn-override">
-          <Plus className="icon-sm" />
-          <span>Add Car</span>
-        </Button>
+        {session?.user?.role !== "CLIENT" && (
+          <Button onClick={openAddModal} className="add-customer-btn-override">
+            <Plus className="icon-sm" />
+            <span>Add Car</span>
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -339,20 +341,22 @@ export default function CarsView({
                     </span>
                   </div>
                 </div>
-                <div className="customer-actions">
-                  <button
-                    className="icon-btn icon-btn--edit"
-                    onClick={() => openEditModal(car)}
-                  >
-                    <Edit className="icon-sm" />
-                  </button>
-                  <button
-                    className="icon-btn icon-btn--danger"
-                    onClick={() => handleDeleteCar(car.id)}
-                  >
-                    <Trash className="icon-sm" />
-                  </button>
-                </div>
+                {session?.user?.role !== "CLIENT" && (
+                  <div className="customer-actions">
+                    <button
+                      className="icon-btn icon-btn--edit"
+                      onClick={() => openEditModal(car)}
+                    >
+                      <Edit className="icon-sm" />
+                    </button>
+                    <button
+                      className="icon-btn icon-btn--danger"
+                      onClick={() => handleDeleteCar(car.id)}
+                    >
+                      <Trash className="icon-sm" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -425,21 +429,22 @@ export default function CarsView({
                   </div>
                 ))}
               </div>
-
-              <div className="dialog-actions">
-                <Button
-                  className="dialog-btn dialog-btn--primary"
-                  onClick={() => openEditModal(selectedCar)}
-                >
-                  Edit Car
-                </Button>
-                <Button
-                  className="dialog-btn dialog-btn--danger"
-                  onClick={() => handleDeleteCar(selectedCar.id)}
-                >
-                  Delete Car
-                </Button>
-              </div>
+              {session?.user?.role !== "CLIENT" && (
+                <div className="dialog-actions">
+                  <Button
+                    className="dialog-btn dialog-btn--primary"
+                    onClick={() => openEditModal(selectedCar)}
+                  >
+                    Edit Car
+                  </Button>
+                  <Button
+                    className="dialog-btn dialog-btn--danger"
+                    onClick={() => handleDeleteCar(selectedCar.id)}
+                  >
+                    Delete Car
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
