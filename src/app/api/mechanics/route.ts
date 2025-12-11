@@ -21,15 +21,15 @@ export async function GET(request: NextRequest) {
     );
     if (minimal) {
       const minimalMechanics = await prisma.employees.findMany({
-        where: {
-          NOT: {
-            service_order: {
-              some: {
-                status: { notIn: ["COMPLETED", "CANCELLED"] },
-              },
-            },
-          },
-        },
+        // where: {
+        //   NOT: {
+        //     service_order: {
+        //       some: {
+        //         status: { notIn: ["COMPLETED", "CANCELLED"] },
+        //       },
+        //     },
+        //   },
+        // },
         include: {
           users: {
             select: {
