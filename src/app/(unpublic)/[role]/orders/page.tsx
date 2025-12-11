@@ -40,6 +40,24 @@ export default async function OrdersPage() {
       console.log("Returning empty orders for mechanic due to error.");
       return <OrdersView dataServiceOrders={[]} session={session} />;
     }
+  } else if (session?.user?.role === "CLIENT") {
+    try {
+      const h = await headers();
+      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+      const url = new URL("/api/orders/user", baseUrl).toString();
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers: Object.fromEntries(h.entries()),
+      });
+      const dataServiceOrders: ServiceOrders[] = res.ok ? await res.json() : [];
+      return (
+        <OrdersView dataServiceOrders={dataServiceOrders} session={session} />
+      );
+    } catch (error) {
+      console.error(error);
+      console.log("Returning empty orders for client due to error.");
+      return <OrdersView dataServiceOrders={[]} session={session} />;
+    }
   } else {
     return <OrdersView dataServiceOrders={[]} session={session} />;
   }

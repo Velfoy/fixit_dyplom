@@ -80,6 +80,7 @@ export async function POST(req: Request) {
       data: {
         order_number: orderNumber || `SO-${Date.now()}`,
         vehicle_id: vehicleId,
+        customer_id: customerId,
         mechanic_id: mechanicId,
         issue,
         description: description || null,
