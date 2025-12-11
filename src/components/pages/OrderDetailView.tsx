@@ -1066,19 +1066,20 @@ export function OrderDetailView({
           >
             {STATUS_MAP[serviceOrder?.status || "NEW"].label}
           </span>
-
-          <button
-            onClick={() => {
-              if (!isTerminalStatus(serviceOrder?.status)) handleEdit();
-            }}
-            className={`edit-button_order ${
-              isTerminalStatus(serviceOrder?.status) ? "disabled" : ""
-            }`}
-            disabled={isTerminalStatus(serviceOrder?.status)}
-          >
-            <Edit className="icon-xxx" />
-            <span>Edit Order</span>
-          </button>
+          {session?.user?.role !== "MECHANIC" && (
+            <button
+              onClick={() => {
+                if (!isTerminalStatus(serviceOrder?.status)) handleEdit();
+              }}
+              className={`edit-button_order ${
+                isTerminalStatus(serviceOrder?.status) ? "disabled" : ""
+              }`}
+              disabled={isTerminalStatus(serviceOrder?.status)}
+            >
+              <Edit className="icon-xxx" />
+              <span>Edit Order</span>
+            </button>
+          )}
         </div>
       </div>
       <div className="customers-header">
@@ -1183,21 +1184,23 @@ export function OrderDetailView({
         <div className="customers-list-inner">
           <div className="customers-header order-section-header">
             <span>Order Status Timeline / Tasks</span>
-            <div className="left_order">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isTerminalStatus(serviceOrder?.status)) openAddTask();
-                }}
-                className={`edit-button_order ${
-                  isTerminalStatus(serviceOrder?.status) ? "disabled" : ""
-                }`}
-                disabled={isTerminalStatus(serviceOrder?.status)}
-              >
-                <Plus className="icon-xxx" />
-                <span>Add Task</span>
-              </button>
-            </div>
+            {session?.user?.role === "ADMIN" && (
+              <div className="left_order">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isTerminalStatus(serviceOrder?.status)) openAddTask();
+                  }}
+                  className={`edit-button_order ${
+                    isTerminalStatus(serviceOrder?.status) ? "disabled" : ""
+                  }`}
+                  disabled={isTerminalStatus(serviceOrder?.status)}
+                >
+                  <Plus className="icon-xxx" />
+                  <span>Add Task</span>
+                </button>
+              </div>
+            )}
           </div>
           <Card className="customers-list">
             {(serviceOrder?.task || []).map((task, index) => {

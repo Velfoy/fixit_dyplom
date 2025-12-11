@@ -8,12 +8,13 @@
 
 .order-status-pill {
   font-size: 14px;
-  margin-right: 10px;
+  margin-right: 0px;
 }
 
 .order-status-pill--clickable {
   cursor: pointer;
   align-content: center;
+  height: 23px;
 }
 
 .order-issue-tag {

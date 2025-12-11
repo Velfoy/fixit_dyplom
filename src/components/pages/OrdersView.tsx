@@ -10,6 +10,7 @@ import {
   Clock,
   Phone,
   Plus,
+  Search,
   Trash,
 } from "lucide-react";
 import { ServiceOrders, StatusServiceOrder } from "@/types/serviceorders";
@@ -112,6 +113,31 @@ export function OrdersView({
   const [selectedMechanicId, setSelectedMechanicId] = useState<number | null>(
     null
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusServiceOrder | "ALL">(
+    "ALL"
+  );
+  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      order.carBrand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.carModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.carLicensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.issue.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.mechanicFirstName
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      order.mechanicLastName.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "ALL" || order.status === statusFilter;
+    const matchesPriority =
+      priorityFilter === "ALL" || order.priority === priorityFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
   async function handleCreateOrder(e: FormEvent) {
     e.preventDefault();
@@ -251,10 +277,66 @@ export function OrdersView({
           <span>Create Order</span>
         </Button>
       </div>
+
+      {/* Search and Filter Section */}
+      <Card className="search-card">
+        <div className="search-card-inner">
+          <div className="filter-grid">
+            <div className="filter-field">
+              <label className="filter-label">Search Orders</label>
+              <div className="search-wrapper">
+                <Search className="search-icon" />
+                <Input
+                  className="search-input"
+                  placeholder="Search by car, license plate, issue, order number, mechanic..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="filter-field">
+              <label className="filter-label">Status</label>
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as StatusServiceOrder | "ALL")
+                }
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="NEW">New</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="WAITING_FOR_PARTS">Waiting for Parts</option>
+                <option value="READY">Ready</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+            <div className="filter-field">
+              <label className="filter-label">Priority</label>
+              <select
+                className="filter-select"
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+              >
+                <option value="ALL">All Priorities</option>
+                <option value="LOW">Low</option>
+                <option value="NORMAL">Normal</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <div className="filter-results">
+            Showing {filteredOrders.length} of {orders.length} orders
+          </div>
+        </div>
+      </Card>
+
       <Card className="customers-list-card">
         <div className="customers-list-inner">
           <div className="customers-list">
-            {orders?.map((order) => (
+            {filteredOrders?.map((order) => (
               <div
                 key={order.id}
                 className="customer-row paddingBottom"
