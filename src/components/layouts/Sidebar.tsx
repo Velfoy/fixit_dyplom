@@ -64,10 +64,12 @@ const Sidebar: React.FC<SidebarProps> = ({ role }: SidebarProps) => {
       )}
 
       {/* Orders */}
-      <a href={`/${role}/orders`} className="sidebar-btn">
-        <ClipboardList className="icon" />
-        <span className="sidebar-text">Orders</span>
-      </a>
+      {(role === "admin" || role === "mechanic" || role === "client") && (
+        <a href={`/${role}/orders`} className="sidebar-btn">
+          <ClipboardList className="icon" />
+          <span className="sidebar-text">Orders</span>
+        </a>
+      )}
 
       {/* Cars */}
       {(role === "admin" || role === "client") && (
@@ -78,12 +80,12 @@ const Sidebar: React.FC<SidebarProps> = ({ role }: SidebarProps) => {
       )}
 
       {/* Client history */}
-      {role === "client" && (
+      {/* {role === "client" && (
         <a href={`/${role}/history`} className="sidebar-btn">
           <Clock className="icon" />
           <span className="sidebar-text">History</span>
         </a>
-      )}
+      )} */}
 
       {/* Invoices */}
       {(role === "admin" || role === "client" || role === "warehouse") && (
