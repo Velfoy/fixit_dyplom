@@ -149,6 +149,10 @@ export function OrderDetailView({
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(
     null
   );
+  const [showTaskStatusDialog, setShowTaskStatusDialog] = useState(false);
+  const [taskToChangeStatus, setTaskToChangeStatus] = useState<any | null>(
+    null
+  );
 
   const toNumber = (val: any): number => {
     if (val === null || val === undefined) return 0;
@@ -397,6 +401,45 @@ export function OrderDetailView({
     } catch (err) {
       console.error(err);
       alert("Failed to delete task");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleChangeTaskStatus(newStatus: StatusServiceOrder) {
+    if (!serviceOrder || !taskToChangeStatus) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/orders/${serviceOrder.id}/tasks/${taskToChangeStatus.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: taskToChangeStatus.title,
+            description: taskToChangeStatus.description,
+            mechanicId: taskToChangeStatus.mechanic_id,
+            priority: taskToChangeStatus.priority,
+            status: newStatus,
+          }),
+        }
+      );
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const updated = await res.json();
+
+      setServiceOrder((prev) => {
+        if (!prev) return prev;
+        const updatedTasks = (prev.task || []).map((t: any) =>
+          t.id === taskToChangeStatus.id ? updated : t
+        );
+        return { ...prev, task: updatedTasks };
+      });
+
+      setShowTaskStatusDialog(false);
+      setTaskToChangeStatus(null);
+    } catch (err) {
+      console.error("Failed to change task status:", err);
+      alert("Failed to change task status");
     } finally {
       setIsSubmitting(false);
     }
@@ -1274,17 +1317,36 @@ export function OrderDetailView({
                           <Mail className="icon-xxx" />
                         </button>
                       )}
-                      <button
-                        className="icon-btn icon-btn--edit"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!isTerminalStatus(serviceOrder?.status))
-                            openEditTask(task);
-                        }}
-                        disabled={isTerminalStatus(serviceOrder?.status)}
-                      >
-                        <Pencil className="icon-xxx" />
-                      </button>
+                      {session?.user?.role === "ADMIN" && (
+                        <button
+                          className="icon-btn icon-btn--edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isTerminalStatus(serviceOrder?.status))
+                              openEditTask(task);
+                          }}
+                          disabled={isTerminalStatus(serviceOrder?.status)}
+                        >
+                          <Pencil className="icon-xxx" />
+                        </button>
+                      )}
+
+                      {session?.user?.role === "MECHANIC" && (
+                        <span
+                          role="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTaskToChangeStatus(task);
+                            setShowTaskStatusDialog(true);
+                          }}
+                          className={`${
+                            STATUS_MAP[task.status || "NEW"].className
+                          } order-status-pill order-status-pill--clickable`}
+                        >
+                          {STATUS_MAP[task.status || "NEW"].label}
+                        </span>
+                      )}
+
                       <button
                         className="icon-btn icon-btn--edit"
                         onClick={(e) => {
@@ -1420,34 +1482,38 @@ export function OrderDetailView({
                 />
 
                 <div className="order-parts-summary">
-                  <div className="order-parts-summary-row">
-                    <span>Parts Total (All):</span>
-                    <span>
-                      $
-                      {orderParts
-                        .reduce((sum, part) => {
-                          const price =
-                            part.priceAtTime || part.price_at_time || 0;
-                          return sum + toNumber(price);
-                        }, 0)
-                        .toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="order-parts-summary-row">
-                    <span>Parts Included in Order Total:</span>
-                    <span>
-                      $
-                      {orderParts
-                        .filter((p) => p.deductFromWarehouse)
-                        .reduce((sum, part) => {
-                          const price =
-                            part.priceAtTime || part.price_at_time || 0;
-                          return sum + toNumber(price);
-                        }, 0)
-                        .toFixed(2)}
-                    </span>
-                  </div>
+                  {session?.user?.role !== "MECHANIC" && (
+                    <>
+                      {" "}
+                      <div className="order-parts-summary-row">
+                        <span>Parts Total (All):</span>
+                        <span>
+                          $
+                          {orderParts
+                            .reduce((sum, part) => {
+                              const price =
+                                part.priceAtTime || part.price_at_time || 0;
+                              return sum + toNumber(price);
+                            }, 0)
+                            .toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="order-parts-summary-row">
+                        <span>Parts Included in Order Total:</span>
+                        <span>
+                          $
+                          {orderParts
+                            .filter((p) => p.deductFromWarehouse)
+                            .reduce((sum, part) => {
+                              const price =
+                                part.priceAtTime || part.price_at_time || 0;
+                              return sum + toNumber(price);
+                            }, 0)
+                            .toFixed(2)}
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {orderParts.some(
                     (p) => p.deductFromWarehouse && !p.warehouseDeductedAt
@@ -1472,171 +1538,177 @@ export function OrderDetailView({
           </div>
         </div>
       </Card>
-      <Card className="customers-list-card">
-        <div className="customers-list-inner">
-          <div className="customers-header order-section-indent">
-            <span>Payment & Transaction Details</span>
-            {session?.user?.role === "ADMIN" && (
-              <div className="transaction-details-header">
-                <div className="transaction-actions">
-                  <Button className="edit-button_trans">
-                    Generate Invoice
-                  </Button>
-                  <Button
-                    onClick={() => setShowAddItem(true)}
-                    className="edit-button_trans"
-                  >
-                    <Plus className="icon-xxx" />
-                    <span>Add Item</span>
-                  </Button>
+      {session?.user?.role === "MECHANIC" && (
+        <Card className="customers-list-card">
+          <div className="customers-list-inner">
+            <div className="customers-header order-section-indent">
+              <span>Payment & Transaction Details</span>
+              {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "MECHANIC") && (
+                <div className="transaction-details-header">
+                  <div className="transaction-actions">
+                    {session?.user?.role === "ADMIN" && (
+                      <Button className="edit-button_trans">
+                        Generate Invoice
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => setShowAddItem(true)}
+                      className="edit-button_trans"
+                    >
+                      <Plus className="icon-xxx" />
+                      <span>Add Item</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "MECHANIC") && (
+              <div className="transaction-padding">
+                <div className="transaction-table-wrapper">
+                  <table className="transaction-table">
+                    <tbody>
+                      <tr>
+                        <td>Service Order Total</td>
+                        <td className="transaction-amount">
+                          ${toNumber(serviceOrder?.total_cost).toFixed(2)}
+                        </td>
+                        <td>-</td>
+                      </tr>
+
+                      {invoiceItems.length > 0 ? (
+                        invoiceItems.map((item) => (
+                          <tr key={item.id}>
+                            <td>{item.description}</td>
+                            <td className="transaction-amount">
+                              ${Number(item.cost || 0).toFixed(2)}
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="transaction-delete-btn"
+                                onClick={async () => {
+                                  if (!serviceOrder) return;
+                                  try {
+                                    console.log("Deleting item:", item.id);
+
+                                    const res = await fetch(
+                                      `/api/orders/${serviceOrder.id}/items/${item.id}`,
+                                      { method: "DELETE" }
+                                    );
+
+                                    if (!res.ok) {
+                                      const errorText = await res.text();
+                                      console.error(
+                                        "Delete API Error:",
+                                        errorText
+                                      );
+                                      throw new Error(
+                                        `API returned ${res.status}`
+                                      );
+                                    }
+
+                                    const response = await res.json();
+                                    console.log("Delete response:", response);
+
+                                    setInvoiceItems((prev) =>
+                                      prev.filter((i) => i.id !== item.id)
+                                    );
+
+                                    console.log("Item deleted successfully");
+                                  } catch (err) {
+                                    console.error("Delete error:", err);
+                                    alert("Failed to delete item");
+                                  }
+                                }}
+                              >
+                                <Trash className="icon-xxx" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="transaction-table-empty">
+                            No additional items added
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Total */}
+                <div className="transaction-total">
+                  <span>Total</span>
+                  <span>
+                    $
+                    {(
+                      toNumber(serviceOrder?.total_cost || 0) +
+                      invoiceItems.reduce(
+                        (sum, item) => sum + Number(item.cost || 0),
+                        0
+                      )
+                    ).toFixed(2)}
+                  </span>
                 </div>
               </div>
             )}
-          </div>
 
-          {session?.user?.role !== "ADMIN" && (
-            <div className="transaction-padding">
-              <div className="transaction-table-wrapper">
-                <table className="transaction-table">
-                  <tbody>
-                    <tr>
-                      <td>Service Order Total</td>
-                      <td className="transaction-amount">
-                        ${toNumber(serviceOrder?.total_cost).toFixed(2)}
-                      </td>
-                      <td>-</td>
-                    </tr>
-
-                    {invoiceItems.length > 0 ? (
-                      invoiceItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.description}</td>
-                          <td className="transaction-amount">
-                            ${Number(item.cost || 0).toFixed(2)}
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="transaction-delete-btn"
-                              onClick={async () => {
-                                if (!serviceOrder) return;
-                                try {
-                                  console.log("Deleting item:", item.id);
-
-                                  const res = await fetch(
-                                    `/api/orders/${serviceOrder.id}/items/${item.id}`,
-                                    { method: "DELETE" }
-                                  );
-
-                                  if (!res.ok) {
-                                    const errorText = await res.text();
-                                    console.error(
-                                      "Delete API Error:",
-                                      errorText
-                                    );
-                                    throw new Error(
-                                      `API returned ${res.status}`
-                                    );
-                                  }
-
-                                  const response = await res.json();
-                                  console.log("Delete response:", response);
-
-                                  setInvoiceItems((prev) =>
-                                    prev.filter((i) => i.id !== item.id)
-                                  );
-
-                                  console.log("Item deleted successfully");
-                                } catch (err) {
-                                  console.error("Delete error:", err);
-                                  alert("Failed to delete item");
-                                }
-                              }}
-                            >
-                              <Trash className="icon-xxx" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={3} className="transaction-table-empty">
-                          No additional items added
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Total */}
-              <div className="transaction-total">
-                <span>Total</span>
-                <span>
-                  $
-                  {(
-                    toNumber(serviceOrder?.total_cost || 0) +
-                    invoiceItems.reduce(
-                      (sum, item) => sum + Number(item.cost || 0),
-                      0
-                    )
-                  ).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {session?.user?.role === "ADMIN" && (
-            <div className="transaction-padding">
-              <div className="transaction-items-list">
-                <div className="transaction-item-row">
-                  <span className="transaction-item-name">
-                    Service Order Total
-                  </span>
-                  <div className="transaction-item-details">
-                    <span className="transaction-item-amount">
-                      ${toNumber(serviceOrder?.total_cost).toFixed(2)}
+            {session?.user?.role === "CLIENT" && (
+              <div className="transaction-padding">
+                <div className="transaction-items-list">
+                  <div className="transaction-item-row">
+                    <span className="transaction-item-name">
+                      Service Order Total
                     </span>
+                    <div className="transaction-item-details">
+                      <span className="transaction-item-amount">
+                        ${toNumber(serviceOrder?.total_cost).toFixed(2)}
+                      </span>
+                    </div>
                   </div>
+
+                  {invoiceItems.length > 0
+                    ? invoiceItems.map((item) => (
+                        <div key={item.id} className="transaction-item-row">
+                          <span className="transaction-item-name">
+                            {item.description}
+                          </span>
+                          <div className="transaction-item-details">
+                            <span className="transaction-item-amount">
+                              ${item.cost.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    : null}
                 </div>
 
-                {invoiceItems.length > 0
-                  ? invoiceItems.map((item) => (
-                      <div key={item.id} className="transaction-item-row">
-                        <span className="transaction-item-name">
-                          {item.description}
-                        </span>
-                        <div className="transaction-item-details">
-                          <span className="transaction-item-amount">
-                            ${item.cost.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  : null}
-              </div>
+                <div className="transaction-total">
+                  <span>Total</span>
+                  <span>
+                    $
+                    {(
+                      toNumber(serviceOrder?.total_cost || 0) +
+                      invoiceItems.reduce((sum, item) => sum + item.cost, 0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
 
-              <div className="transaction-total">
-                <span>Total</span>
-                <span>
-                  $
-                  {(
-                    toNumber(serviceOrder?.total_cost || 0) +
-                    invoiceItems.reduce((sum, item) => sum + item.cost, 0)
-                  ).toFixed(2)}
-                </span>
+                <Button
+                  onClick={() => setShowPayment(true)}
+                  className="transaction-pay-now-btn"
+                >
+                  Pay Now
+                </Button>
               </div>
-
-              <Button
-                onClick={() => setShowPayment(true)}
-                className="transaction-pay-now-btn"
-              >
-                Pay Now
-              </Button>
-            </div>
-          )}
-        </div>
-      </Card>
+            )}
+          </div>
+        </Card>
+      )}
 
       <Dialog
         open={showAddItem}
@@ -2695,6 +2767,105 @@ export function OrderDetailView({
             >
               Close
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Status Change Dialog */}
+      <Dialog
+        open={showTaskStatusDialog}
+        onOpenChange={(open) => {
+          setShowTaskStatusDialog(open);
+          if (!open) setTaskToChangeStatus(null);
+        }}
+      >
+        <DialogContent className="dialog-content">
+          <DialogHeader>
+            <DialogTitle className="dialog-title">
+              Change Task Status
+            </DialogTitle>
+          </DialogHeader>
+          <div className="dialog-body">
+            <p>
+              Change the status of task:{" "}
+              <strong>{taskToChangeStatus?.title}</strong>
+            </p>
+            <p style={{ marginTop: "10px", fontSize: "14px", color: "#666" }}>
+              Current status: {taskToChangeStatus?.status}
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: "10px",
+                marginTop: "20px",
+              }}
+            >
+              <Button
+                className="dialog-btn dialog-btn--primary"
+                onClick={() => handleChangeTaskStatus("NEW")}
+                disabled={isSubmitting || taskToChangeStatus?.status === "NEW"}
+              >
+                New
+              </Button>
+              <Button
+                className="dialog-btn dialog-btn--primary"
+                onClick={() => handleChangeTaskStatus("IN_PROGRESS")}
+                disabled={
+                  isSubmitting || taskToChangeStatus?.status === "IN_PROGRESS"
+                }
+              >
+                In Progress
+              </Button>
+              <Button
+                className="dialog-btn dialog-btn--primary"
+                onClick={() => handleChangeTaskStatus("WAITING_FOR_PARTS")}
+                disabled={
+                  isSubmitting ||
+                  taskToChangeStatus?.status === "WAITING_FOR_PARTS"
+                }
+              >
+                Waiting for Parts
+              </Button>
+              <Button
+                className="dialog-btn dialog-btn--primary"
+                onClick={() => handleChangeTaskStatus("READY")}
+                disabled={
+                  isSubmitting || taskToChangeStatus?.status === "READY"
+                }
+              >
+                Ready
+              </Button>
+              <Button
+                className="dialog-btn dialog-btn--primary"
+                onClick={() => handleChangeTaskStatus("COMPLETED")}
+                disabled={
+                  isSubmitting || taskToChangeStatus?.status === "COMPLETED"
+                }
+              >
+                Completed
+              </Button>
+              <Button
+                className="dialog-btn dialog-btn--danger"
+                onClick={() => handleChangeTaskStatus("CANCELLED")}
+                disabled={
+                  isSubmitting || taskToChangeStatus?.status === "CANCELLED"
+                }
+              >
+                Cancelled
+              </Button>
+            </div>
+            <div className="dialog-actions" style={{ marginTop: "20px" }}>
+              <Button
+                className="dialog-btn dialog-btn--secondary"
+                onClick={() => {
+                  setShowTaskStatusDialog(false);
+                  setTaskToChangeStatus(null);
+                }}
+              >
+                Close
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
