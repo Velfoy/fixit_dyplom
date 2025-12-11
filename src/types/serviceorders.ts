@@ -44,10 +44,15 @@ type Order = {
   mechanicEmail: string;
   mechanicPhone: string;
   mechanicLastName: string;
+  currentUserId?: number | null;
+  currentEmployeeId?: number | null;
   task: Task[];
 };
 export type Task = {
   id: number;
+  mechanic_id?: number | null;
+  mechanicId?: number | null;
+  mechanicUserId?: number | null;
   mechanicFirstName: string;
   mechanicLastName: string;
   title: string;

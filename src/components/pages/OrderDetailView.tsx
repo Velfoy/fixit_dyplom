@@ -23,6 +23,7 @@ import {
 import "@/styles/users.css";
 import "@/styles/orders.css";
 import "@/styles/transaction.css";
+import "@/styles/order-detail.css";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -46,7 +47,6 @@ export function OrderDetailView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editedOrder, setEditedOrder] = useState<Partial<Order>>({});
 
-  // Helper to transform API order response to frontend Order type
   const transformOrder = (apiOrder: any): Order => {
     return {
       id: apiOrder.id,
@@ -76,9 +76,17 @@ export function OrderDetailView({
         apiOrder.employees?.users?.email || serviceOrder?.mechanicEmail || "",
       mechanicPhone:
         apiOrder.employees?.users?.phone || serviceOrder?.mechanicPhone || "",
+      currentUserId:
+        apiOrder.currentUserId ?? serviceOrder?.currentUserId ?? null,
+      currentEmployeeId:
+        apiOrder.currentEmployeeId ?? serviceOrder?.currentEmployeeId ?? null,
       task:
         apiOrder.service_task?.map((t: any) => ({
           id: t.id,
+          mechanic_id: t.mechanic_id ?? t.mechanicId ?? null,
+          mechanicId: t.mechanic_id ?? t.mechanicId ?? null,
+          mechanicUserId:
+            t.mechanicUserId || t.employees?.user_id || t.employees?.users?.id,
           mechanicFirstName: t.employees?.users?.first_name || "",
           mechanicLastName: t.employees?.users?.last_name || "",
           title: t.title,
@@ -120,7 +128,6 @@ export function OrderDetailView({
   const [showPaymentProcessing, setShowPaymentProcessing] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // Parts management state
   const [orderParts, setOrderParts] = useState<any[]>([]);
   const [loadingParts, setLoadingParts] = useState(false);
   const [showAddPart, setShowAddPart] = useState(false);
@@ -131,7 +138,6 @@ export function OrderDetailView({
   const [partsSearchTerm, setPartsSearchTerm] = useState<string>("");
   const [loadingAvailableParts, setLoadingAvailableParts] = useState(false);
 
-  // Task comments state
   const [showTaskComments, setShowTaskComments] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [taskComments, setTaskComments] = useState<any[]>([]);
@@ -144,7 +150,6 @@ export function OrderDetailView({
     null
   );
 
-  // Helper to convert Decimal/string to number
   const toNumber = (val: any): number => {
     if (val === null || val === undefined) return 0;
     return parseFloat(val.toString());
@@ -154,7 +159,6 @@ export function OrderDetailView({
     setEditedOrder({});
   }
 
-  // Fetch invoice items from API on component mount
   useEffect(() => {
     if (!serviceOrder?.id) return;
 
@@ -182,7 +186,6 @@ export function OrderDetailView({
     fetchItems();
   }, [serviceOrder?.id]);
 
-  // Function to fetch warehouse parts
   const fetchOrderParts = async () => {
     if (!serviceOrder?.id) return;
     setLoadingParts(true);
@@ -199,7 +202,6 @@ export function OrderDetailView({
     }
   };
 
-  // Fetch warehouse parts assigned to this order
   useEffect(() => {
     fetchOrderParts();
   }, [serviceOrder?.id]);
@@ -553,7 +555,6 @@ export function OrderDetailView({
       setServiceOrder(updated);
       setShowStatusDialog(false);
 
-      // If completing order, refresh parts list to show deducted status
       if (newStatus === "COMPLETED") {
         await fetchOrderParts();
       }
@@ -594,9 +595,6 @@ export function OrderDetailView({
         }),
       });
 
-      console.log("Response status:", res.status);
-
-      // First check if response is OK
       if (!res.ok) {
         const errorText = await res.text();
         console.error("API Error:", errorText);
@@ -609,35 +607,23 @@ export function OrderDetailView({
         }
       }
 
-      // Parse the successful response
       const response = await res.json();
-      console.log("API Success Response:", response);
 
-      // Now backend returns only { item }, NOT { item, order }
       if (!response.item) {
         throw new Error("Invalid response structure from API");
       }
 
-      // Update local state with the new item
       const newItem = {
         id: response.item.id.toString(),
         description: response.item.name,
         cost: parseFloat(response.item.cost.toString()),
       };
 
-      // Update invoice items - this is the only state we need to update
       setInvoiceItems((prev) => [...prev, newItem]);
 
-      // DO NOT update serviceOrder since total_cost is not changing
-      // setServiceOrder(response.order); // Remove this line
-
-      // Reset form
       setShowAddItem(false);
       setItemDescription("");
       setItemCost(0);
-
-      console.log("Item added successfully:", newItem);
-      console.log("Service order total remains:", serviceOrder.total_cost);
     } catch (err: any) {
       console.error("Error in handleAddItem:", err);
       alert(`Failed to add item: ${err.message}`);
@@ -651,7 +637,6 @@ export function OrderDetailView({
     setShowPaymentProcessing(true);
     setIsSubmitting(true);
     try {
-      // Simulate payment gateway processing
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const paymentData = {
@@ -683,7 +668,6 @@ export function OrderDetailView({
     }
   }
 
-  // Search warehouse parts
   async function handleSearchParts() {
     if (!partsSearchTerm.trim()) {
       setAvailableParts([]);
@@ -708,7 +692,6 @@ export function OrderDetailView({
     }
   }
 
-  // Add part to order
   async function handleAddPart(e: FormEvent) {
     e.preventDefault();
     if (!serviceOrder || !selectedPart || partQuantity <= 0) return;
@@ -737,10 +720,8 @@ export function OrderDetailView({
       console.log("Part data:", response.part);
       setServiceOrder(transformOrder(response.order));
 
-      // Add the newly created part with its full data to the list
       setOrderParts((prev) => [...prev, response.part]);
 
-      // Reset form
       setShowAddPart(false);
       setSelectedPart(null);
       setPartQuantity(1);
@@ -755,7 +736,6 @@ export function OrderDetailView({
     }
   }
 
-  // Delete part from order
   async function handleDeletePart(partId: string) {
     if (!serviceOrder) return;
     if (!confirm("Are you sure you want to remove this part?")) return;
@@ -786,7 +766,6 @@ export function OrderDetailView({
     }
   }
 
-  // Toggle deduct from warehouse flag
   async function handleToggleDeduct(partId: string, currentValue: boolean) {
     if (!serviceOrder) return;
 
@@ -833,7 +812,6 @@ export function OrderDetailView({
     }
   }
 
-  // Deduct parts from warehouse
   async function handleDeductPartsFromWarehouse() {
     if (!serviceOrder) return;
     if (!confirm("This will deduct all marked parts from warehouse. Continue?"))
@@ -869,7 +847,6 @@ export function OrderDetailView({
     }
   }
 
-  // Task Comments Functions
   function openTaskComments(task: any) {
     setSelectedTask(task);
     setShowTaskComments(true);
@@ -966,7 +943,6 @@ export function OrderDetailView({
       alert(`Failed to upload file: ${err.message}`);
     } finally {
       setUploadingFile(false);
-      // Reset file input
       e.target.value = "";
     }
   }
@@ -1023,10 +999,7 @@ export function OrderDetailView({
 
   return (
     <div className="customers-view">
-      <div
-        className="customers-header"
-        style={{ marginTop: "4px", marginBottom: "12px" }}
-      >
+      <div className="customers-header order-header-spacing">
         <Button onClick={handleBack} className="add-customer-btn-override">
           <ArrowLeft className="icon-sm" />
           <span>Back to Orders</span>
@@ -1038,15 +1011,13 @@ export function OrderDetailView({
               if (serviceOrder && !isTerminalStatus(serviceOrder.status))
                 setShowStatusDialog(true);
             }}
-            className={STATUS_MAP[serviceOrder?.status || "NEW"].className}
-            style={{
-              fontSize: "14px",
-              marginRight: "10px",
-              cursor:
-                serviceOrder && !isTerminalStatus(serviceOrder.status)
-                  ? "pointer"
-                  : "default",
-            }}
+            className={`${
+              STATUS_MAP[serviceOrder?.status || "NEW"].className
+            } order-status-pill ${
+              serviceOrder && !isTerminalStatus(serviceOrder?.status)
+                ? "order-status-pill--clickable"
+                : ""
+            }`}
           >
             {STATUS_MAP[serviceOrder?.status || "NEW"].label}
           </span>
@@ -1069,9 +1040,7 @@ export function OrderDetailView({
         <div className="customers-header-text">
           <h1 className="customers-title">
             Order #{serviceOrder?.id}{" "}
-            <span style={{ fontSize: "14px", marginLeft: "10px" }}>
-              {serviceOrder?.issue}
-            </span>
+            <span className="order-issue-tag">{serviceOrder?.issue}</span>
           </h1>
           <p className="customers-subtitle">
             {serviceOrder?.carBrand} {serviceOrder?.carModel} (
@@ -1079,13 +1048,10 @@ export function OrderDetailView({
           </p>
         </div>
         <div className="customers-header-text">
-          <p
-            className="customers-subtitle"
-            style={{ color: "white", margin: "0px" }}
-          >
+          <p className="customers-subtitle order-license-label">
             License plate
           </p>
-          <p className="customers-subtitle" style={{ textAlign: "end" }}>
+          <p className="customers-subtitle order-license-value">
             {serviceOrder?.carLicensePlate}
           </p>
         </div>
@@ -1170,10 +1136,7 @@ export function OrderDetailView({
       </div>
       <Card className="customers-list-card">
         <div className="customers-list-inner">
-          <div
-            className="customers-header"
-            style={{ marginBottom: "10px", marginLeft: "5px" }}
-          >
+          <div className="customers-header order-section-header">
             <span>Order Status Timeline / Tasks</span>
             <div className="left_order">
               <button
@@ -1196,7 +1159,38 @@ export function OrderDetailView({
               const statusClass =
                 statusMap[task.status as StatusServiceOrder] ||
                 "grafic-unknown";
+              const isMechanic = session?.user?.role === "MECHANIC";
+              const currentUserId =
+                Number(session?.user?.id ?? serviceOrder?.currentUserId ?? 0) ||
+                null;
+              const currentEmployeeId =
+                Number(serviceOrder?.currentEmployeeId ?? 0) || null;
+              const taskAssignedUserId =
+                task.mechanicUserId !== undefined &&
+                task.mechanicUserId !== null
+                  ? Number(task.mechanicUserId)
+                  : null;
+              const taskAssignedEmployeeId =
+                task.mechanic_id !== undefined && task.mechanic_id !== null
+                  ? Number(task.mechanic_id)
+                  : task.mechanicId !== undefined && task.mechanicId !== null
+                  ? Number(task.mechanicId)
+                  : null;
 
+              if (isMechanic) {
+                const matchesByUser =
+                  currentUserId !== null &&
+                  taskAssignedUserId !== null &&
+                  currentUserId === taskAssignedUserId;
+                const matchesByEmployee =
+                  currentEmployeeId !== null &&
+                  taskAssignedEmployeeId !== null &&
+                  currentEmployeeId === taskAssignedEmployeeId;
+
+                if (!matchesByUser && !matchesByEmployee) {
+                  return null;
+                }
+              }
               return (
                 <div
                   key={task.id}
@@ -1244,14 +1238,7 @@ export function OrderDetailView({
                     </div>
                     <div className="customer-meta">
                       <span className="customer-meta-item">
-                        <strong
-                          style={{
-                            marginTop: "5px",
-                            marginBottom: "5px",
-                            fontSize: "14px",
-                            color: "#cccccc",
-                          }}
-                        >
+                        <strong className="order-task-description">
                           {task.description}
                         </strong>
                       </span>
@@ -1272,7 +1259,8 @@ export function OrderDetailView({
                   </div>
                   {isTerminalStatus(serviceOrder?.status) ? null : (
                     <div className="customer-actions">
-                      {session?.user?.role === "ADMIN" && (
+                      {(session?.user?.role === "ADMIN" ||
+                        session?.user?.role === "MECHANIC") && (
                         <button
                           className="icon-btn icon-btn--edit"
                           onClick={(e) => {
@@ -1314,10 +1302,9 @@ export function OrderDetailView({
           </Card>
         </div>
       </Card>
-      {/* Warehouse Parts Management Section */}
       <Card className="customers-list-card">
         <div className="customers-list-inner">
-          <div className="customers-header" style={{ marginLeft: "5px" }}>
+          <div className="customers-header order-section-indent">
             <span>Warehouse Parts Used</span>
             {(session?.user?.role === "ADMIN" ||
               session?.user?.role === "MECHANIC") &&
@@ -1336,15 +1323,11 @@ export function OrderDetailView({
               )}
           </div>
 
-          <div style={{ paddingTop: "15px" }}>
+          <div className="order-section-padding">
             {loadingParts ? (
-              <div style={{ textAlign: "center", padding: "20px" }}>
-                Loading parts...
-              </div>
+              <div className="order-center-message">Loading parts...</div>
             ) : orderParts.length === 0 ? (
-              <div
-                style={{ textAlign: "center", padding: "20px", color: "#999" }}
-              >
+              <div className="order-center-message order-center-message-muted">
                 No warehouse parts assigned yet
               </div>
             ) : (
@@ -1419,15 +1402,11 @@ export function OrderDetailView({
                       render: (part: any) => (
                         <Button
                           onClick={() => handleDeletePart(part.id)}
-                          className="edit-button_trans"
+                          className="edit-button_trans order-part-delete-btn"
                           disabled={
                             isTerminalStatus(serviceOrder?.status) ||
                             loadingParts
                           }
-                          style={{
-                            padding: "4px 8px",
-                            fontSize: "12px",
-                          }}
                         >
                           Delete
                         </Button>
@@ -1438,23 +1417,8 @@ export function OrderDetailView({
                   getRowKey={(part) => part.id}
                 />
 
-                {/* Parts Total Summary */}
-                <div
-                  style={{
-                    padding: "15px",
-                    borderTop: "1px solid #ddd",
-                    textAlign: "right",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: "8px",
-                      paddingBottom: "8px",
-                      borderBottom: "1px solid #ddd",
-                    }}
-                  >
+                <div className="order-parts-summary">
+                  <div className="order-parts-summary-row">
                     <span>Parts Total (All):</span>
                     <span>
                       $
@@ -1468,15 +1432,7 @@ export function OrderDetailView({
                     </span>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: "8px",
-                      paddingBottom: "8px",
-                      borderBottom: "1px solid #ddd",
-                    }}
-                  >
+                  <div className="order-parts-summary-row">
                     <span>Parts Included in Order Total:</span>
                     <span>
                       $
@@ -1491,13 +1447,12 @@ export function OrderDetailView({
                     </span>
                   </div>
 
-                  {/* Deduct from Warehouse Button */}
                   {orderParts.some(
                     (p) => p.deductFromWarehouse && !p.warehouseDeductedAt
                   ) && (
                     <Button
                       onClick={handleDeductPartsFromWarehouse}
-                      className="transaction-pay-now-btn"
+                      className="transaction-pay-now-btn order-deduct-btn"
                       disabled={
                         isTerminalStatus(serviceOrder?.status) ||
                         isSubmitting ||
@@ -1505,10 +1460,6 @@ export function OrderDetailView({
                           (p) => p.deductFromWarehouse && !p.warehouseDeductedAt
                         )
                       }
-                      style={{
-                        marginTop: "10px",
-                        backgroundColor: "#ff9800",
-                      }}
                     >
                       {isSubmitting ? "Processing..." : "Delete from Warehouse"}
                     </Button>
@@ -1521,7 +1472,7 @@ export function OrderDetailView({
       </Card>
       <Card className="customers-list-card">
         <div className="customers-list-inner">
-          <div className="customers-header" style={{ marginLeft: "5px" }}>
+          <div className="customers-header order-section-indent">
             <span>Payment & Transaction Details</span>
             {session?.user?.role === "ADMIN" && (
               <div className="transaction-details-header">
@@ -1542,7 +1493,7 @@ export function OrderDetailView({
           </div>
 
           {session?.user?.role !== "ADMIN" && (
-            <div style={{ paddingTop: "15px" }}>
+            <div className="transaction-padding">
               <div className="transaction-table-wrapper">
                 <table className="transaction-table">
                   <tbody>
@@ -1589,7 +1540,6 @@ export function OrderDetailView({
                                   const response = await res.json();
                                   console.log("Delete response:", response);
 
-                                  // Just remove item from local state, don't update serviceOrder
                                   setInvoiceItems((prev) =>
                                     prev.filter((i) => i.id !== item.id)
                                   );
@@ -1635,7 +1585,7 @@ export function OrderDetailView({
           )}
 
           {session?.user?.role === "ADMIN" && (
-            <div style={{ paddingTop: "15px" }}>
+            <div className="transaction-padding">
               <div className="transaction-items-list">
                 <div className="transaction-item-row">
                   <span className="transaction-item-name">
@@ -1767,13 +1717,12 @@ export function OrderDetailView({
             {/* Search Parts */}
             <div className="dialog-form-field dialog-field--full">
               <label className="dialog-field-label">Search Part *</label>
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div className="order-search-row">
                 <Input
-                  className="dialog-input"
+                  className="dialog-input order-search-input-grow"
                   value={partsSearchTerm}
                   onChange={(e) => setPartsSearchTerm(e.target.value)}
                   placeholder="Search by name or part number..."
-                  style={{ flex: 1 }}
                 />
                 <Button
                   type="button"
@@ -1785,17 +1734,8 @@ export function OrderDetailView({
                 </Button>
               </div>
 
-              {/* Search Results Dropdown */}
               {availableParts.length > 0 && (
-                <div
-                  style={{
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                    marginTop: "8px",
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                  }}
-                >
+                <div className="order-search-dropdown">
                   {availableParts.map((part) => (
                     <div
                       key={part.id}
@@ -1804,27 +1744,12 @@ export function OrderDetailView({
                         setPartsSearchTerm(part.name);
                         setAvailableParts([]);
                       }}
-                      style={{
-                        padding: "10px",
-                        cursor: "pointer",
-                        borderBottom: "1px solid #f0f0f0",
-                        backgroundColor:
-                          selectedPart?.id === part.id ? "#f0f8ff" : "#fff",
-                        transition: "background-color 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (selectedPart?.id !== part.id) {
-                          e.currentTarget.style.backgroundColor = "#f9f9f9";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (selectedPart?.id !== part.id) {
-                          e.currentTarget.style.backgroundColor = "#fff";
-                        }
-                      }}
+                      className={`order-search-item ${
+                        selectedPart?.id === part.id ? "active" : ""
+                      }`}
                     >
-                      <div style={{ fontWeight: "bold" }}>{part.name}</div>
-                      <div style={{ fontSize: "12px", color: "#666" }}>
+                      <div className="order-search-item-title">{part.name}</div>
+                      <div className="order-search-item-meta">
                         Part #: {part.part_number} | Stock: {part.quantity} |
                         Price: ${toNumber(part.price).toFixed(2)}
                       </div>
@@ -1834,48 +1759,22 @@ export function OrderDetailView({
               )}
 
               {loadingAvailableParts && (
-                <div
-                  style={{ marginTop: "8px", color: "#999", fontSize: "12px" }}
-                >
-                  Searching...
-                </div>
+                <div className="order-search-hint">Searching...</div>
               )}
             </div>
 
-            {/* Selected Part Details */}
             {selectedPart && (
-              <div
-                style={{
-                  padding: "12px",
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "4px",
-                  marginBottom: "12px",
-                }}
-              >
-                <p style={{ margin: "0 0 4px 0" }}>
+              <div className="order-selected-part">
+                <p className="order-selected-part-title">
                   <strong>{selectedPart.name}</strong>
                 </p>
-                <p
-                  style={{
-                    margin: "0 0 4px 0",
-                    fontSize: "12px",
-                    color: "#666",
-                  }}
-                >
+                <p className="order-selected-part-meta">
                   Part #: {selectedPart.part_number}
                 </p>
-                <p
-                  style={{
-                    margin: "0 0 4px 0",
-                    fontSize: "12px",
-                    color: "#666",
-                  }}
-                >
+                <p className="order-selected-part-meta">
                   Available: {selectedPart.quantity} units
                 </p>
-                <p
-                  style={{ margin: "0", fontSize: "12px", fontWeight: "bold" }}
-                >
+                <p className="order-selected-part-price">
                   Unit Price: ${toNumber(selectedPart.price).toFixed(2)}
                 </p>
               </div>
@@ -1910,14 +1809,8 @@ export function OrderDetailView({
                 </div>
               )}
 
-              <div
-                className="dialog-form-field dialog-field--full"
-                style={{ marginTop: "8px" }}
-              >
-                <label
-                  className="dialog-field-label"
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
+              <div className="dialog-form-field dialog-field--full order-dialog-checkbox">
+                <label className="dialog-field-label order-dialog-checkbox-label">
                   <input
                     type="checkbox"
                     checked={includeInTotal}
@@ -1962,10 +1855,7 @@ export function OrderDetailView({
           setShowPayment(open);
         }}
       >
-        <DialogContent
-          className="dialog-content"
-          style={{ maxWidth: "500px", maxHeight: "90vh", overflowY: "auto" }}
-        >
+        <DialogContent className="dialog-content order-payment-dialog">
           <DialogHeader>
             <DialogTitle className="dialog-title">Complete Payment</DialogTitle>
           </DialogHeader>
@@ -1975,25 +1865,9 @@ export function OrderDetailView({
             onSubmit={handleProcessPayment}
           >
             {/* Order Summary */}
-            <div
-              style={{
-                backgroundColor: "#f5f5f5",
-                padding: "12px",
-                borderRadius: "8px",
-                marginBottom: "20px",
-              }}
-            >
-              <h4 style={{ marginTop: 0, marginBottom: "8px" }}>
-                Order Summary
-              </h4>
-              <div
-                style={{
-                  fontSize: "14px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
+            <div className="order-summary-card">
+              <h4 className="order-summary-title">Order Summary</h4>
+              <div className="order-summary-row">
                 <span>Subtotal:</span>
                 <span>
                   ${" "}
@@ -2003,29 +1877,13 @@ export function OrderDetailView({
                   ).toFixed(2)}
                 </span>
               </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                  paddingBottom: "8px",
-                  borderBottom: "1px solid #ddd",
-                }}
-              >
+              <div className="order-summary-row order-summary-row-divider">
                 <span>Tax (0%):</span>
                 <span>$0.00</span>
               </div>
-              <div
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
+              <div className="order-summary-total">
                 <span>Total Due:</span>
-                <span style={{ color: "#1976d2" }}>
+                <span>
                   ${" "}
                   {(
                     toNumber(serviceOrder?.total_cost || 0) +
@@ -2035,236 +1893,145 @@ export function OrderDetailView({
               </div>
             </div>
 
-            {/* Payment Method Selection */}
-            <div className="dialog-form-grid">
-              <label className="dialog-field-label">
-                Select Payment Method
-              </label>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "10px",
-                  marginBottom: "20px",
-                }}
+            <div className="order-payment-grid">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("CARD")}
+                className={`order-pay-option ${
+                  paymentMethod === "CARD" ? "active" : ""
+                }`}
               >
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("CARD")}
-                  style={{
-                    padding: "12px",
-                    border: `2px solid ${
-                      paymentMethod === "CARD" ? "#1976d2" : "#ddd"
-                    }`,
-                    borderRadius: "8px",
-                    backgroundColor:
-                      paymentMethod === "CARD" ? "#f0f8ff" : "#fff",
-                    cursor: "pointer",
-                    fontWeight: paymentMethod === "CARD" ? "bold" : "normal",
-                  }}
-                >
-                  💳 Card
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("APPLE_PAY")}
-                  style={{
-                    padding: "12px",
-                    border: `2px solid ${
-                      paymentMethod === "APPLE_PAY" ? "#1976d2" : "#ddd"
-                    }`,
-                    borderRadius: "8px",
-                    backgroundColor:
-                      paymentMethod === "APPLE_PAY" ? "#f0f8ff" : "#fff",
-                    cursor: "pointer",
-                    fontWeight:
-                      paymentMethod === "APPLE_PAY" ? "bold" : "normal",
-                  }}
-                >
-                  🍎 Apple Pay
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("BANK_TRANSFER")}
-                  style={{
-                    padding: "12px",
-                    border: `2px solid ${
-                      paymentMethod === "BANK_TRANSFER" ? "#1976d2" : "#ddd"
-                    }`,
-                    borderRadius: "8px",
-                    backgroundColor:
-                      paymentMethod === "BANK_TRANSFER" ? "#f0f8ff" : "#fff",
-                    cursor: "pointer",
-                    fontWeight:
-                      paymentMethod === "BANK_TRANSFER" ? "bold" : "normal",
-                  }}
-                >
-                  🏦 Bank Transfer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("GOOGLE_PAY")}
-                  style={{
-                    padding: "12px",
-                    border: `2px solid ${
-                      paymentMethod === "GOOGLE_PAY" ? "#1976d2" : "#ddd"
-                    }`,
-                    borderRadius: "8px",
-                    backgroundColor:
-                      paymentMethod === "GOOGLE_PAY" ? "#f0f8ff" : "#fff",
-                    cursor: "pointer",
-                    fontWeight:
-                      paymentMethod === "GOOGLE_PAY" ? "bold" : "normal",
-                  }}
-                >
-                  🔵 Google Pay
-                </button>
-              </div>
+                💳 Card
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("APPLE_PAY")}
+                className={`order-pay-option ${
+                  paymentMethod === "APPLE_PAY" ? "active" : ""
+                }`}
+              >
+                🍎 Apple Pay
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                className={`order-pay-option ${
+                  paymentMethod === "BANK_TRANSFER" ? "active" : ""
+                }`}
+              >
+                🏦 Bank Transfer
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("GOOGLE_PAY")}
+                className={`order-pay-option ${
+                  paymentMethod === "GOOGLE_PAY" ? "active" : ""
+                }`}
+              >
+                🔵 Google Pay
+              </button>
+            </div>
 
-              {/* Card Payment Form */}
-              {paymentMethod === "CARD" && (
-                <>
-                  <div className="dialog-form-field dialog-field--full">
-                    <label className="dialog-field-label">
-                      Cardholder Name *
-                    </label>
-                    <Input
-                      className="dialog-input"
-                      placeholder="John Doe"
-                      required
-                    />
-                  </div>
+            {paymentMethod === "CARD" && (
+              <>
+                <div className="dialog-form-field dialog-field--full">
+                  <label className="dialog-field-label">
+                    Cardholder Name *
+                  </label>
+                  <Input
+                    className="dialog-input"
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
 
-                  <div className="dialog-form-field dialog-field--full">
-                    <label className="dialog-field-label">Card Number *</label>
-                    <Input
-                      className="dialog-input"
-                      value={cardDetails.cardNumber}
-                      onChange={(e) =>
-                        setCardDetails({
-                          ...cardDetails,
-                          cardNumber: e.target.value,
-                        })
-                      }
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                      required
-                    />
-                  </div>
+                <div className="dialog-form-field dialog-field--full">
+                  <label className="dialog-field-label">Card Number *</label>
+                  <Input
+                    className="dialog-input"
+                    value={cardDetails.cardNumber}
+                    onChange={(e) =>
+                      setCardDetails({
+                        ...cardDetails,
+                        cardNumber: e.target.value,
+                      })
+                    }
+                    placeholder="1234 5678 9012 3456"
+                    maxLength={19}
+                    required
+                  />
+                </div>
 
-                  <div className="dialog-form-field">
-                    <label className="dialog-field-label">Expiry Date *</label>
-                    <Input
-                      className="dialog-input"
-                      value={cardDetails.expiryDate}
-                      onChange={(e) =>
-                        setCardDetails({
-                          ...cardDetails,
-                          expiryDate: e.target.value,
-                        })
-                      }
-                      placeholder="MM/YY"
-                      maxLength={5}
-                      required
-                    />
-                  </div>
+                <div className="dialog-form-field">
+                  <label className="dialog-field-label">Expiry Date *</label>
+                  <Input
+                    className="dialog-input"
+                    value={cardDetails.expiryDate}
+                    onChange={(e) =>
+                      setCardDetails({
+                        ...cardDetails,
+                        expiryDate: e.target.value,
+                      })
+                    }
+                    placeholder="MM/YY"
+                    maxLength={5}
+                    required
+                  />
+                </div>
 
-                  <div className="dialog-form-field">
-                    <label className="dialog-field-label">CVV *</label>
-                    <Input
-                      className="dialog-input"
-                      value={cardDetails.cvv}
-                      onChange={(e) =>
-                        setCardDetails({ ...cardDetails, cvv: e.target.value })
-                      }
-                      placeholder="123"
-                      maxLength={4}
-                      required
-                    />
-                  </div>
-                </>
-              )}
+                <div className="dialog-form-field">
+                  <label className="dialog-field-label">CVV *</label>
+                  <Input
+                    className="dialog-input"
+                    value={cardDetails.cvv}
+                    onChange={(e) =>
+                      setCardDetails({ ...cardDetails, cvv: e.target.value })
+                    }
+                    placeholder="123"
+                    maxLength={4}
+                    required
+                  />
+                </div>
+              </>
+            )}
 
-              {/* Bank Transfer Form */}
-              {paymentMethod === "BANK_TRANSFER" && (
-                <>
-                  <div
-                    style={{
-                      backgroundColor: "#fff3cd",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      marginBottom: "15px",
-                    }}
-                  >
-                    <p style={{ marginTop: 0, marginBottom: "8px" }}>
-                      <strong>Bank Transfer Details:</strong>
-                    </p>
-                    <p style={{ marginBottom: "4px", fontSize: "14px" }}>
-                      Account: 1234567890
-                    </p>
-                    <p style={{ marginBottom: "4px", fontSize: "14px" }}>
-                      Bank: Standard Bank
-                    </p>
-                    <p style={{ marginBottom: "0px", fontSize: "14px" }}>
-                      Reference: ORD-{serviceOrder?.id}
-                    </p>
-                  </div>
-                  <p style={{ fontSize: "12px", color: "#666" }}>
-                    Please transfer the amount and confirm below once done.
+            {paymentMethod === "BANK_TRANSFER" && (
+              <>
+                <div className="order-summary-card">
+                  <p className="order-summary-title">
+                    <strong>Bank Transfer Details:</strong>
                   </p>
-                </>
-              )}
-
-              {/* Apple/Google Pay Message */}
-              {(paymentMethod === "APPLE_PAY" ||
-                paymentMethod === "GOOGLE_PAY") && (
-                <div
-                  style={{
-                    backgroundColor: "#e8f5e9",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    marginBottom: "15px",
-                  }}
-                >
-                  <p style={{ marginTop: 0, marginBottom: "8px" }}>
-                    <strong>
-                      Ready for{" "}
-                      {paymentMethod === "APPLE_PAY"
-                        ? "Apple Pay"
-                        : "Google Pay"}
-                    </strong>
-                  </p>
-                  <p style={{ marginBottom: "0px", fontSize: "14px" }}>
-                    Click 'Process Payment' to complete payment via{" "}
-                    {paymentMethod === "APPLE_PAY" ? "Apple Pay" : "Google Pay"}
-                    .
+                  <p className="order-summary-row">Account: 1234567890</p>
+                  <p className="order-summary-row">Bank: Standard Bank</p>
+                  <p className="order-summary-row order-summary-row-divider">
+                    Reference: ORD-{serviceOrder?.id}
                   </p>
                 </div>
-              )}
-            </div>
+                <p className="order-search-item-meta">
+                  Please transfer the amount and confirm below once done.
+                </p>
+              </>
+            )}
+
+            {(paymentMethod === "APPLE_PAY" ||
+              paymentMethod === "GOOGLE_PAY") && (
+              <div className="order-summary-card">
+                <p className="order-summary-title">
+                  <strong>
+                    Ready for{" "}
+                    {paymentMethod === "APPLE_PAY" ? "Apple Pay" : "Google Pay"}
+                  </strong>
+                </p>
+                <p className="order-search-item-meta">
+                  Click 'Process Payment' to complete payment via{" "}
+                  {paymentMethod === "APPLE_PAY" ? "Apple Pay" : "Google Pay"}.
+                </p>
+              </div>
+            )}
             {showPaymentProcessing && (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "20px",
-                  backgroundColor: "#f9f9f9",
-                  borderRadius: "8px",
-                  marginBottom: "20px",
-                }}
-              >
-                <p style={{ marginTop: 0 }}>Processing payment...</p>
-                <div
-                  style={{
-                    display: "inline-block",
-                    width: "30px",
-                    height: "30px",
-                    border: "3px solid #f3f3f3",
-                    borderTop: "3px solid #1976d2",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
-                  }}
-                />
-                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+              <div className="order-payment-processing">
+                <p className="order-summary-title">Processing payment...</p>
+                <div className="order-spinner" />
               </div>
             )}
 
@@ -2318,8 +2085,7 @@ export function OrderDetailView({
               <div className="dialog-form-field dialog-field--full">
                 <label className="dialog-field-label">Description</label>
                 <textarea
-                  className="dialog-input"
-                  style={{ minHeight: "100px" }}
+                  className="dialog-input task-textarea"
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
                 />
@@ -2420,8 +2186,7 @@ export function OrderDetailView({
               <div className="dialog-form-field dialog-field--full">
                 <label className="dialog-field-label">Description</label>
                 <textarea
-                  className="dialog-input"
-                  style={{ minHeight: "100px" }}
+                  className="dialog-input task-textarea"
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
                 />
@@ -2574,8 +2339,7 @@ export function OrderDetailView({
                 </label>
                 <textarea
                   placeholder="Additional details about the service"
-                  className="dialog-input "
-                  style={{ minHeight: "100px" }}
+                  className="dialog-input task-textarea"
                   value={editedOrder.description ?? ""}
                   onChange={(e) =>
                     setEditedOrder((prev) => ({
@@ -2713,7 +2477,6 @@ export function OrderDetailView({
         </DialogContent>
       </Dialog>
 
-      {/* Task Comments Dialog */}
       <Dialog
         open={showTaskComments}
         onOpenChange={(open) => {
@@ -2727,113 +2490,39 @@ export function OrderDetailView({
           }
         }}
       >
-        <DialogContent
-          className="dialog-content"
-          style={{
-            maxWidth: "850px",
-            overflowY: "scroll",
-            overflowX: "hidden",
-          }}
-        >
+        <DialogContent className="dialog-content order-comments-dialog">
           <DialogHeader>
             <DialogTitle className="dialog-title">
               Task Comments: {selectedTask?.title}
             </DialogTitle>
           </DialogHeader>
-          <div className="dialog-body" style={{ padding: "10px" }}>
-            {/* Add Comment Form - Only for Admin */}
-            {session?.user?.role === "ADMIN" && (
-              <div
-                style={{
-                  padding: "20px",
-                  background:
-                    "linear-gradient(135deg, #0f0f0fff 0%, #242424ff 100%)",
-                  borderRadius: "12px",
-                  boxShadow: "0 4px 15px rgba(102, 126, 234, 0.2)",
-                }}
-              >
-                <h4
-                  style={{
-                    marginBottom: "15px",
-                    fontSize: "16px",
-                    fontWeight: "700",
-                    color: "#ffffff",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0px",
-                    marginTop: "0px",
-                  }}
-                >
-                  ✏️ Add Comment
-                </h4>
-                <div style={{ marginBottom: "14px" }}>
+          <div className="dialog-body order-comments-body">
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "MECHANIC") && (
+              <div className="order-comment-form">
+                <h4 className="order-comment-title">✏️ Add Comment</h4>
+                <div className="order-upload-section">
                   <Input
                     placeholder="Comment title (optional)"
                     value={commentTitle}
                     onChange={(e) => setCommentTitle(e.target.value)}
-                    style={{
-                      marginBottom: "12px",
-                      backgroundColor: "rgba(255, 255, 255, 0.95)",
-                      border: "1px solid rgba(255, 255, 255, 0.3)",
-                      borderRadius: "6px",
-                      padding: "10px 12px",
-                      fontSize: "14px",
-                      color: "#333",
-                    }}
+                    className="order-comment-input"
                   />
                   <textarea
                     placeholder="Write your comment..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    style={{
-                      width: "-webkit-fill-available",
-                      minHeight: "110px",
-                      padding: "12px",
-                      border: "1px solid rgba(255, 255, 255, 0.3)",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      resize: "vertical",
-                      backgroundColor: "rgba(255, 255, 255, 0.95)",
-                      color: "#333",
-                      fontFamily: "inherit",
-                      lineHeight: "1.5",
-                    }}
+                    className="order-comment-textarea"
                   />
                 </div>
 
-                {/* File Upload */}
-                <div style={{ marginBottom: "14px" }}>
+                <div className="order-upload-section">
                   <label
                     htmlFor="comment-file-upload"
-                    style={{
-                      display: "inline-block",
-                      padding: "8px 16px",
-                      backgroundColor: "rgba(255, 255, 255, 0.2)",
-                      color: "white",
-                      border: "2px solid rgba(255, 255, 255, 0.4)",
-                      borderRadius: "6px",
-                      cursor: uploadingFile ? "not-allowed" : "pointer",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      transition: "all 0.3s ease",
-                      opacity: uploadingFile ? 0.6 : 1,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!uploadingFile) {
-                        e.currentTarget.style.backgroundColor =
-                          "rgba(255, 255, 255, 0.3)";
-                        e.currentTarget.style.borderColor =
-                          "rgba(255, 255, 255, 0.6)";
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor =
-                        "rgba(255, 255, 255, 0.2)";
-                      e.currentTarget.style.borderColor =
-                        "rgba(255, 255, 255, 0.4)";
-                      e.currentTarget.style.transform = "none";
-                    }}
+                    className={`order-upload-label ${
+                      uploadingFile ? "disabled" : ""
+                    }`}
+                    aria-disabled={uploadingFile}
                   >
                     {uploadingFile ? "Uploading..." : "Attach File/Video"}
                   </label>
@@ -2843,69 +2532,23 @@ export function OrderDetailView({
                     accept="image/*,video/*,.pdf,.doc,.docx"
                     onChange={handleFileUpload}
                     disabled={uploadingFile}
-                    style={{ display: "none" }}
+                    className="order-upload-input"
                   />
-                  <p
-                    style={{
-                      fontSize: "12px",
-                      color: "rgba(255, 255, 255, 0.8)",
-                      marginTop: "6px",
-                    }}
-                  >
+                  <p className="order-upload-note">
                     Supported: Images, Videos, PDF, Word documents (Max 50MB)
                   </p>
                 </div>
 
-                {/* Uploaded Files Preview */}
                 {uploadedFiles.length > 0 && (
-                  <div
-                    style={{
-                      marginBottom: "14px",
-                      backgroundColor: "rgba(255, 255, 255, 0.1)",
-                      padding: "10px",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        fontWeight: "700",
-                        marginBottom: "8px",
-                        color: "rgba(255, 255, 255, 0.9)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.5px",
-                      }}
-                    >
-                      Attached Files:
-                    </p>
-                    <div
-                      style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
-                    >
+                  <div className="order-uploaded-list">
+                    <p className="order-uploaded-list-title">Attached Files:</p>
+                    <div className="order-uploaded-items">
                       {uploadedFiles.map((file) => (
-                        <div
-                          key={file.id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            padding: "6px 10px",
-                            backgroundColor: "rgba(255, 255, 255, 0.15)",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            color: "#fff",
-                          }}
-                        >
+                        <div key={file.id} className="order-uploaded-item">
                           <span>{file.filename}</span>
                           <button
                             onClick={() => removeUploadedFile(file.id)}
-                            style={{
-                              marginLeft: "6px",
-                              background: "none",
-                              border: "none",
-                              color: "#fff",
-                              cursor: "pointer",
-                              fontWeight: "bold",
-                              fontSize: "16px",
-                            }}
+                            className="order-uploaded-remove"
                           >
                             ×
                           </button>
@@ -2918,69 +2561,25 @@ export function OrderDetailView({
                 <Button
                   onClick={handleAddComment}
                   disabled={!newComment.trim() || isSubmitting}
-                  className="dialog-btn dialog-btn--primary"
-                  style={{
-                    width: "100%",
-                    backgroundColor: "rgba(255, 255, 255, 0.25)",
-                    color: "white",
-                    border: "2px solid rgba(255, 255, 255, 0.4)",
-                    fontWeight: "700",
-                    transition: "all 0.3s ease",
-                  }}
+                  className="dialog-btn dialog-btn--primary order-comment-submit"
                 >
                   {isSubmitting ? "Adding..." : "Add Comment"}
                 </Button>
               </div>
             )}
 
-            {/* Comments List */}
             <div>
-              <h4
-                style={{
-                  marginBottom: "18px",
-                  paddingBottom: "12px",
-                  fontSize: "16px",
-                  fontWeight: "700",
-                  color: "#212529",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  borderBottom: "3px solid #0f0f0fff",
-                }}
-              >
+              <h4 className="order-comments-heading">
                 💬 Comments ({taskComments.length})
               </h4>
               {loadingComments ? (
-                <p
-                  style={{
-                    textAlign: "center",
-                    padding: "30px 20px",
-                    color: "#999",
-                    fontSize: "14px",
-                  }}
-                >
-                  Loading comments...
-                </p>
+                <p className="order-comments-loading">Loading comments...</p>
               ) : taskComments.length === 0 ? (
-                <p
-                  style={{
-                    textAlign: "center",
-                    padding: "30px 20px",
-                    color: "#999",
-                    fontStyle: "italic",
-                    fontSize: "14px",
-                  }}
-                >
+                <p className="order-comments-empty">
                   No comments yet. Be the first to add one!
                 </p>
               ) : (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "14px",
-                  }}
-                >
+                <div className="order-comments-list">
                   {taskComments.map((comment) => {
                     const author = comment.author ||
                       comment.employees?.users ||
@@ -2993,119 +2592,26 @@ export function OrderDetailView({
                     return (
                       <div
                         key={comment.id}
-                        style={{
-                          padding: "16px",
-                          background:
-                            "linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)",
-                          border: "2px solid #0f0f0fff",
-                          borderRadius: "10px",
-                          transition: "all 0.3s ease",
-                          position: "relative",
-                          overflow: "hidden",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow =
-                            "0 4px 12px rgba(102, 126, 234, 0.15)";
-                          e.currentTarget.style.borderColor = "#0f0f0fff";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none";
-                          e.currentTarget.style.borderColor =
-                            "rgba(92, 92, 92, 1)";
-                        }}
+                        className="order-comment-card-wrapper"
                       >
-                        {/* Top gradient stripe */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            height: "3px",
-                            background:
-                              "linear-gradient(90deg, #0f0f0fff 0%, #242424ff 100%)",
-                          }}
-                        />
+                        <div className="order-comment-stripe" />
 
-                        {/* Comment header with author info */}
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "flex-start",
-                            marginBottom: "14px",
-                            gap: "12px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              flex: 1,
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "8px",
-                            }}
-                          >
-                            {/* Author name and title */}
-                            <div
-                              style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                alignItems: "baseline",
-                                gap: "8px",
-                              }}
-                            >
-                              <strong
-                                style={{
-                                  fontSize: "16px",
-                                  fontWeight: "700",
-                                  color: "#242424ff",
-                                  padding: "2px 6px",
-                                  backgroundColor: "rgba(102, 126, 234, 0.08)",
-                                  borderRadius: "4px",
-                                }}
-                              >
+                        <div className="order-comment-card">
+                          <div className="order-comment-author-block">
+                            <div className="order-comment-author-row">
+                              <strong className="order-comment-author">
                                 {author.first_name || "Unknown"}{" "}
                                 {author.last_name || "User"}
                               </strong>
                               {comment.title && (
-                                <span
-                                  style={{
-                                    color: "#0c080fff",
-                                    fontSize: "13px",
-                                    fontStyle: "italic",
-                                    fontWeight: "600",
-                                    padding: "2px 6px",
-                                    backgroundColor: "rgba(118, 75, 162, 0.08)",
-                                    borderRadius: "4px",
-                                  }}
-                                >
+                                <span className="order-comment-title-italic">
                                   - {comment.title}
                                 </span>
                               )}
                             </div>
 
-                            {/* Meta info (timestamp and email) */}
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: "16px",
-                                alignItems: "center",
-                                flexWrap: "wrap",
-                                padding: "8px",
-                                backgroundColor: "rgba(255, 255, 255, 0.6)",
-                                borderRadius: "6px",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize: "12px",
-                                  color: "#242424ff",
-                                  fontWeight: "600",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "4px",
-                                }}
-                              >
+                            <div className="order-comment-meta">
+                              <span>
                                 🕐{" "}
                                 {new Date(comment.created_at).toLocaleString(
                                   "en-US",
@@ -3121,17 +2627,7 @@ export function OrderDetailView({
                               {(comment.employees?.users?.email ||
                                 comment.admin_author?.email ||
                                 author?.email) && (
-                                <span
-                                  style={{
-                                    fontSize: "12px",
-                                    color: "#764ba2",
-                                    textDecoration: "none",
-                                    fontWeight: "600",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                  }}
-                                >
+                                <span className="order-comment-email">
                                   ✉️{" "}
                                   {author?.email ||
                                     comment.employees?.users?.email ||
@@ -3145,23 +2641,7 @@ export function OrderDetailView({
                             <button
                               onClick={() => handleDeleteComment(comment.id)}
                               disabled={deletingCommentId === comment.id}
-                              style={{
-                                border: "none",
-                                background: "rgba(15,15,15,0.85)",
-                                color: "white",
-                                padding: "8px 10px",
-                                borderRadius: "8px",
-                                cursor:
-                                  deletingCommentId === comment.id
-                                    ? "not-allowed"
-                                    : "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                fontWeight: 700,
-                                boxShadow: "0 4px 10px rgba(15,15,15,0.25)",
-                                transition: "all 0.2s ease",
-                              }}
+                              className="order-comment-delete"
                             >
                               <Trash size={16} />
                               {deletingCommentId === comment.id
@@ -3170,91 +2650,28 @@ export function OrderDetailView({
                             </button>
                           )}
                         </div>
-
-                        {/* Comment message */}
-                        <p
-                          style={{
-                            fontSize: "14px",
-                            marginBottom: "12px",
-                            whiteSpace: "pre-wrap",
-                            color: "#333",
-                            lineHeight: "1.6",
-                            padding: "12px",
-                            backgroundColor: "rgba(255, 255, 255, 0.7)",
-                            borderLeft: "3px solid #242424ff",
-                            borderRadius: "4px",
-                          }}
-                        >
+                        <p className="order-comment-message">
                           {comment.message}
                         </p>
 
-                        {/* Attached Documents */}
                         {comment.document && comment.document.length > 0 && (
-                          <div
-                            style={{
-                              marginTop: "12px",
-                              padding: "12px",
-                              backgroundColor: "rgba(102, 126, 234, 0.08)",
-                              borderRadius: "6px",
-                              borderLeft: "3px solid #242424ff",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "11px",
-                                fontWeight: "700",
-                                marginBottom: "8px",
-                                color: "#242424ff",
-                                textTransform: "uppercase",
-                                letterSpacing: "1px",
-                              }}
-                            >
+                          <div className="order-comment-attachments">
+                            <p className="order-comment-attachments-title">
                               Attachments:
                             </p>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: "8px",
-                              }}
-                            >
+                            <div className="order-comment-attachments-list">
                               {comment.document.map((doc: any) => (
                                 <a
                                   key={doc.id}
                                   href={doc.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    padding: "6px 12px",
-                                    background:
-                                      "linear-gradient(135deg, #242424ff 0%, #764ba2 100%)",
-                                    color: "white",
-                                    borderRadius: "6px",
-                                    fontSize: "12px",
-                                    textDecoration: "none",
-                                    transition: "all 0.2s ease",
-                                    fontWeight: "600",
-                                    boxShadow:
-                                      "0 2px 6px rgba(102, 126, 234, 0.3)",
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform =
-                                      "translateY(-2px)";
-                                    e.currentTarget.style.boxShadow =
-                                      "0 4px 10px rgba(102, 126, 234, 0.4)";
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = "none";
-                                    e.currentTarget.style.boxShadow =
-                                      "0 2px 6px rgba(102, 126, 234, 0.3)";
-                                  }}
+                                  className="order-comment-attachment"
                                 >
                                   {doc.type === "PHOTO" && "📷"}
                                   {doc.type === "VIDEO" && "🎥"}
                                   {doc.type === "DOCUMENT" && "📄"}
-                                  <span style={{ marginLeft: "6px" }}>
+                                  <span className="order-comment-attachment-label">
                                     {doc.filename}
                                   </span>
                                 </a>

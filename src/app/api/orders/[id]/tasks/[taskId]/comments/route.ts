@@ -92,7 +92,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     // Check if user is admin
-    if (session.user.role !== "ADMIN") {
+    if (session.user.role !== "ADMIN" && session.user.role !== "MECHANIC") {
       return NextResponse.json(
         { error: "Only admins can add comments" },
         { status: 403 }

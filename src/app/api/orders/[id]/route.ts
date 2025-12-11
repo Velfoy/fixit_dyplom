@@ -1,8 +1,13 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { StatusServiceOrder } from "@/types/serviceorders";
+import getCachedSession from "@/lib/session";
 
-function mapOrder(o: any) {
+function mapOrder(
+  o: any,
+  currentUserId: number | null = null,
+  currentEmployeeId: number | null = null
+) {
   return {
     id: o.id,
     orderNumber: o.order_number,
@@ -21,8 +26,13 @@ function mapOrder(o: any) {
     mechanicLastName: o.employees?.users?.last_name || "",
     mechanicEmail: o.employees?.users?.email || "",
     mechanicPhone: o.employees?.users?.phone || "",
+    currentUserId,
+    currentEmployeeId,
     task: (o.service_task || []).map((t: any) => ({
       id: t.id,
+      mechanic_id: t.mechanic_id ?? null,
+      mechanicId: t.mechanic_id ?? null,
+      mechanicUserId: t.employees?.user_id ?? t.employees?.users?.id ?? null,
       mechanicFirstName: t.employees?.users?.first_name || "",
       mechanicLastName: t.employees?.users?.last_name || "",
       title: t.title,
@@ -37,6 +47,17 @@ function mapOrder(o: any) {
 
 export async function GET(req: NextRequest, context: any) {
   try {
+    const session = await getCachedSession();
+    const sessionUserId = Number(session?.user?.id) || null;
+    let sessionEmployeeId: number | null = null;
+    if (sessionUserId) {
+      const employee = await prisma.employees.findUnique({
+        where: { user_id: sessionUserId },
+        select: { id: true },
+      });
+      sessionEmployeeId = employee?.id ?? null;
+    }
+
     const params = await context.params;
     const id = Number(params?.id);
     if (!Number.isFinite(id)) {
@@ -54,7 +75,9 @@ export async function GET(req: NextRequest, context: any) {
 
     if (!o) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    return NextResponse.json(mapOrder(o), { status: 200 });
+    return NextResponse.json(mapOrder(o, sessionUserId, sessionEmployeeId), {
+      status: 200,
+    });
   } catch (error) {
     console.error("GET /api/orders/[id] error:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
@@ -63,6 +86,17 @@ export async function GET(req: NextRequest, context: any) {
 
 export async function PUT(req: NextRequest, context: any) {
   try {
+    const session = await getCachedSession();
+    const sessionUserId = Number(session?.user?.id) || null;
+    let sessionEmployeeId: number | null = null;
+    if (sessionUserId) {
+      const employee = await prisma.employees.findUnique({
+        where: { user_id: sessionUserId },
+        select: { id: true },
+      });
+      sessionEmployeeId = employee?.id ?? null;
+    }
+
     const params = await context.params;
     const id = Number(params?.id);
     if (!Number.isFinite(id)) {
@@ -128,7 +162,10 @@ export async function PUT(req: NextRequest, context: any) {
       },
     });
 
-    return NextResponse.json(mapOrder(updated), { status: 200 });
+    return NextResponse.json(
+      mapOrder(updated, sessionUserId, sessionEmployeeId),
+      { status: 200 }
+    );
   } catch (error) {
     console.error("PUT /api/orders/[id] error:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
