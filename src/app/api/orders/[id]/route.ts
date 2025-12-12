@@ -8,6 +8,12 @@ function mapOrder(
   currentUserId: number | null = null,
   currentEmployeeId: number | null = null
 ) {
+  // Check if there's a successful payment
+  const hasSuccessfulPayment = o.payment?.some(
+    (p: any) => p.status === "SUCCESS"
+  );
+  const paymentStatus = hasSuccessfulPayment ? "PAID" : null;
+
   return {
     id: o.id,
     orderNumber: o.order_number,
@@ -26,6 +32,7 @@ function mapOrder(
     mechanicLastName: o.employees?.users?.last_name || "",
     mechanicEmail: o.employees?.users?.email || "",
     mechanicPhone: o.employees?.users?.phone || "",
+    paymentStatus,
     currentUserId,
     currentEmployeeId,
     task: (o.service_task || []).map((t: any) => ({
@@ -70,6 +77,7 @@ export async function GET(req: NextRequest, context: any) {
         vehicle: true,
         employees: { include: { users: true } },
         service_task: { include: { employees: { include: { users: true } } } },
+        payment: true,
       },
     });
 
@@ -104,45 +112,63 @@ export async function PUT(req: NextRequest, context: any) {
     }
 
     const body = await req.json();
-    const { issue, description, endDate, total_cost, priority, status } = body;
+    const {
+      issue,
+      description,
+      endDate,
+      total_cost,
+      priority,
+      status,
+      paymentStatus,
+      paidAt,
+      paidAmount,
+    } = body;
 
-    // If completing the order, automatically deduct warehouse parts
-    if (status === "COMPLETED") {
-      // Get all parts that need to be deducted
-      const partsToDeduct = await prisma.$queryRaw`
-        SELECT sop.*, p.quantity as part_quantity, p.name as part_name
-        FROM service_order_part sop
-        JOIN part p ON sop.part_id = p.id
-        WHERE sop.service_order_id = ${id}
-        AND sop.deduct_from_warehouse = true
-        AND sop.warehouse_deducted_at IS NULL
-      `;
+    // If payment status is being updated
+    if (paymentStatus === "PAID") {
+      // Find or create invoice for this order
+      let invoice = await prisma.invoice.findFirst({
+        where: { service_order_id: id },
+      });
 
-      // Deduct each part from warehouse
-      for (const orderPart of partsToDeduct as any[]) {
-        // Check if warehouse has enough quantity
-        if (orderPart.part_quantity < orderPart.quantity) {
-          return NextResponse.json(
-            {
-              error: `Cannot complete order: Insufficient quantity for part "${orderPart.part_name}". Available: ${orderPart.part_quantity}, Needed: ${orderPart.quantity}`,
-            },
-            { status: 400 }
-          );
-        }
-
-        // Deduct from warehouse
-        await prisma.part.update({
-          where: { id: orderPart.part_id },
+      if (!invoice) {
+        // Create invoice if it doesn't exist
+        invoice = await prisma.invoice.create({
           data: {
-            quantity: {
-              decrement: orderPart.quantity,
-            },
+            invoice_number: `INV-${id}-${Date.now()}`,
+            service_order_id: id,
+            total_amount: paidAmount || 0,
+            tax_amount: 0,
+            status: "PAID",
+            paid_at: new Date(paidAt || Date.now()),
           },
         });
-
-        // Mark as deducted
-        await prisma.$executeRaw`UPDATE service_order_part SET warehouse_deducted_at = NOW() WHERE id = ${orderPart.id}`;
+      } else {
+        // Update existing invoice
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            total_amount: paidAmount || 0,
+            status: "PAID",
+            paid_at: new Date(paidAt || Date.now()),
+          },
+        });
       }
+
+      // Create payment record
+      await prisma.payment.create({
+        data: {
+          invoice_id: invoice.id,
+          service_order_id: id,
+          payment_provider: "STRIPE",
+          provider_transaction_id: body.transactionId || null,
+          method: "CARD",
+          status: "SUCCESS",
+          amount: paidAmount || 0,
+          currency: "USD",
+          completed_at: new Date(),
+        },
+      });
     }
 
     const updated = await prisma.service_order.update({
@@ -159,6 +185,7 @@ export async function PUT(req: NextRequest, context: any) {
         vehicle: true,
         employees: { include: { users: true } },
         service_task: { include: { employees: { include: { users: true } } } },
+        payment: true,
       },
     });
 

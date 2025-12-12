@@ -28,6 +28,17 @@ import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Table, type ColumnDef } from "../ui/table";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
 
 interface OrderDetailViewProps {
   dataServiceOrder?: Order | null;
@@ -80,6 +91,7 @@ export function OrderDetailView({
         apiOrder.currentUserId ?? serviceOrder?.currentUserId ?? null,
       currentEmployeeId:
         apiOrder.currentEmployeeId ?? serviceOrder?.currentEmployeeId ?? null,
+      paymentStatus: apiOrder.paymentStatus || serviceOrder?.paymentStatus,
       task:
         apiOrder.service_task?.map((t: any) => ({
           id: t.id,
@@ -126,6 +138,8 @@ export function OrderDetailView({
     Array<{ id: string; description: string; cost: number }>
   >([]);
   const [showPaymentProcessing, setShowPaymentProcessing] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string>("");
+  const [stripeError, setStripeError] = useState<string>("");
   const [loadingItems, setLoadingItems] = useState(false);
 
   const [orderParts, setOrderParts] = useState<any[]>([]);
@@ -712,6 +726,36 @@ export function OrderDetailView({
       setIsSubmitting(false);
     }
   }
+
+  // Create payment intent when payment dialog opens
+  useEffect(() => {
+    if (showPayment && serviceOrder) {
+      const totalAmount =
+        toNumber(serviceOrder?.total_cost || 0) +
+        invoiceItems.reduce((sum, item) => sum + item.cost, 0);
+
+      if (totalAmount > 0) {
+        fetch("/api/create-payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: totalAmount }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.clientSecret) {
+              setClientSecret(data.clientSecret);
+              setStripeError("");
+            } else {
+              setStripeError(data.error || "Failed to initialize payment");
+            }
+          })
+          .catch((err) => {
+            console.error("Payment intent error:", err);
+            setStripeError("Failed to initialize payment");
+          });
+      }
+    }
+  }, [showPayment, serviceOrder, invoiceItems]);
 
   async function handleSearchParts() {
     if (!partsSearchTerm.trim()) {
@@ -1718,12 +1762,26 @@ export function OrderDetailView({
                 </span>
               </div>
 
-              <Button
-                onClick={() => setShowPayment(true)}
-                className="transaction-pay-now-btn"
-              >
-                Pay Now
-              </Button>
+              {serviceOrder?.paymentStatus === "PAID" ? (
+                <Button
+                  disabled
+                  className="transaction-pay-now-btn"
+                  style={{
+                    backgroundColor: "#22c55e",
+                    cursor: "not-allowed",
+                    opacity: 0.9,
+                  }}
+                >
+                  ✓ Order Paid
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setShowPayment(true)}
+                  className="transaction-pay-now-btn"
+                >
+                  Pay Now
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -1946,6 +2004,10 @@ export function OrderDetailView({
         open={showPayment}
         onOpenChange={(open) => {
           setShowPayment(open);
+          if (!open) {
+            setClientSecret("");
+            setStripeError("");
+          }
         }}
       >
         <DialogContent className="dialog-content order-payment-dialog">
@@ -1953,10 +2015,7 @@ export function OrderDetailView({
             <DialogTitle className="dialog-title">Complete Payment</DialogTitle>
           </DialogHeader>
 
-          <form
-            className="dialog-body dialog-body--form"
-            onSubmit={handleProcessPayment}
-          >
+          <div className="dialog-body dialog-body--form">
             {/* Order Summary */}
             <div className="order-summary-card">
               <h4 className="order-summary-title">Order Summary</h4>
@@ -1986,166 +2045,86 @@ export function OrderDetailView({
               </div>
             </div>
 
-            <div className="order-payment-grid">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("CARD")}
-                className={`order-pay-option ${
-                  paymentMethod === "CARD" ? "active" : ""
-                }`}
-              >
-                💳 Card
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("APPLE_PAY")}
-                className={`order-pay-option ${
-                  paymentMethod === "APPLE_PAY" ? "active" : ""
-                }`}
-              >
-                🍎 Apple Pay
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("BANK_TRANSFER")}
-                className={`order-pay-option ${
-                  paymentMethod === "BANK_TRANSFER" ? "active" : ""
-                }`}
-              >
-                🏦 Bank Transfer
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("GOOGLE_PAY")}
-                className={`order-pay-option ${
-                  paymentMethod === "GOOGLE_PAY" ? "active" : ""
-                }`}
-              >
-                🔵 Google Pay
-              </button>
-            </div>
+            {clientSecret && (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <StripePaymentForm
+                  totalAmount={
+                    toNumber(serviceOrder?.total_cost || 0) +
+                    invoiceItems.reduce((sum, item) => sum + item.cost, 0)
+                  }
+                  onSuccess={async () => {
+                    try {
+                      const totalAmount =
+                        toNumber(serviceOrder?.total_cost || 0) +
+                        invoiceItems.reduce((sum, item) => sum + item.cost, 0);
 
-            {paymentMethod === "CARD" && (
-              <>
-                <div className="dialog-form-field dialog-field--full">
-                  <label className="dialog-field-label">
-                    Cardholder Name *
-                  </label>
-                  <Input
-                    className="dialog-input"
-                    placeholder="John Doe"
-                    required
-                  />
-                </div>
+                      const paymentData = {
+                        paymentStatus: "PAID",
+                        paymentMethod: "CARD",
+                        paidAt: new Date().toISOString(),
+                        paidAmount: totalAmount,
+                        transactionId: clientSecret || undefined,
+                      };
 
-                <div className="dialog-form-field dialog-field--full">
-                  <label className="dialog-field-label">Card Number *</label>
-                  <Input
-                    className="dialog-input"
-                    value={cardDetails.cardNumber}
-                    onChange={(e) =>
-                      setCardDetails({
-                        ...cardDetails,
-                        cardNumber: e.target.value,
-                      })
+                      const res = await fetch(
+                        `/api/orders/${serviceOrder?.id}`,
+                        {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(paymentData),
+                        }
+                      );
+
+                      if (res.ok) {
+                        const updated: Order = await res.json();
+                        setServiceOrder(updated);
+                        setShowPayment(false);
+                        setClientSecret("");
+                        // Don't clear invoiceItems - keep them for transaction details
+                      } else {
+                        alert("Payment processed but failed to update order");
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      alert("Payment processed but failed to update order");
                     }
-                    placeholder="1234 5678 9012 3456"
-                    maxLength={19}
-                    required
-                  />
-                </div>
-
-                <div className="dialog-form-field">
-                  <label className="dialog-field-label">Expiry Date *</label>
-                  <Input
-                    className="dialog-input"
-                    value={cardDetails.expiryDate}
-                    onChange={(e) =>
-                      setCardDetails({
-                        ...cardDetails,
-                        expiryDate: e.target.value,
-                      })
-                    }
-                    placeholder="MM/YY"
-                    maxLength={5}
-                    required
-                  />
-                </div>
-
-                <div className="dialog-form-field">
-                  <label className="dialog-field-label">CVV *</label>
-                  <Input
-                    className="dialog-input"
-                    value={cardDetails.cvv}
-                    onChange={(e) =>
-                      setCardDetails({ ...cardDetails, cvv: e.target.value })
-                    }
-                    placeholder="123"
-                    maxLength={4}
-                    required
-                  />
-                </div>
-              </>
+                  }}
+                  onCancel={() => setShowPayment(false)}
+                />
+              </Elements>
             )}
 
-            {paymentMethod === "BANK_TRANSFER" && (
-              <>
-                <div className="order-summary-card">
-                  <p className="order-summary-title">
-                    <strong>Bank Transfer Details:</strong>
-                  </p>
-                  <p className="order-summary-row">Account: 1234567890</p>
-                  <p className="order-summary-row">Bank: Standard Bank</p>
-                  <p className="order-summary-row order-summary-row-divider">
-                    Reference: ORD-{serviceOrder?.id}
-                  </p>
-                </div>
-                <p className="order-search-item-meta">
-                  Please transfer the amount and confirm below once done.
-                </p>
-              </>
-            )}
-
-            {(paymentMethod === "APPLE_PAY" ||
-              paymentMethod === "GOOGLE_PAY") && (
-              <div className="order-summary-card">
-                <p className="order-summary-title">
-                  <strong>
-                    Ready for{" "}
-                    {paymentMethod === "APPLE_PAY" ? "Apple Pay" : "Google Pay"}
-                  </strong>
-                </p>
-                <p className="order-search-item-meta">
-                  Click 'Process Payment' to complete payment via{" "}
-                  {paymentMethod === "APPLE_PAY" ? "Apple Pay" : "Google Pay"}.
-                </p>
-              </div>
-            )}
-            {showPaymentProcessing && (
+            {!clientSecret && !stripeError && (
               <div className="order-payment-processing">
-                <p className="order-summary-title">Processing payment...</p>
+                <p className="order-summary-title">Initializing payment...</p>
                 <div className="order-spinner" />
               </div>
             )}
 
-            <div className="dialog-actions">
-              <Button
-                type="button"
-                onClick={() => setShowPayment(false)}
-                className="dialog-btn--primary"
-                disabled={showPaymentProcessing}
+            {stripeError && (
+              <div
+                style={{
+                  color: "#dc2626",
+                  fontSize: "14px",
+                  marginBottom: "16px",
+                  padding: "12px",
+                  backgroundColor: "#fee2e2",
+                  borderRadius: "6px",
+                }}
               >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="dialog-btn--secondary"
-                disabled={showPaymentProcessing}
-              >
-                {showPaymentProcessing ? "Processing..." : "Process Payment"}
-              </Button>
-            </div>
-          </form>
+                {stripeError}
+                <div className="dialog-actions" style={{ marginTop: "16px" }}>
+                  <Button
+                    type="button"
+                    onClick={() => setShowPayment(false)}
+                    className="dialog-btn--primary"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -2891,5 +2870,127 @@ export function OrderDetailView({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function StripePaymentForm({
+  totalAmount,
+  onSuccess,
+  onCancel,
+}: {
+  totalAmount: number;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [successMessage, setSuccessMessage] = useState<string>("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    // Mock payment processing with random accept/decline
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // 80% chance of success
+    const isSuccess = Math.random() > 0.2;
+
+    if (isSuccess) {
+      setSuccessMessage("✓ Payment successful!");
+      // Wait 1.5 seconds before calling onSuccess to show the message
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      onSuccess();
+    } else {
+      setErrorMessage(
+        "Payment was declined. Please try again with a different card."
+      );
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: "20px" }}>
+        <PaymentElement />
+      </div>
+
+      {isProcessing && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "12px",
+            padding: "20px",
+            marginBottom: "16px",
+          }}
+        >
+          <div className="order-spinner" />
+          <p style={{ fontSize: "14px", color: "#6b7280" }}>
+            Processing payment...
+          </p>
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          style={{
+            color: "#22c55e",
+            fontSize: "14px",
+            marginBottom: "16px",
+            padding: "12px",
+            backgroundColor: "#dcfce7",
+            borderRadius: "6px",
+            textAlign: "center",
+            fontWeight: "500",
+          }}
+        >
+          {successMessage}
+        </div>
+      )}
+
+      {errorMessage && (
+        <div
+          style={{
+            color: "#dc2626",
+            fontSize: "14px",
+            marginBottom: "16px",
+            padding: "12px",
+            backgroundColor: "#fee2e2",
+            borderRadius: "6px",
+          }}
+        >
+          {errorMessage}
+        </div>
+      )}
+
+      <div className="dialog-actions">
+        <Button
+          type="button"
+          onClick={onCancel}
+          className="dialog-btn--primary"
+          disabled={isProcessing || !!successMessage}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="dialog-btn--secondary"
+          disabled={!stripe || isProcessing || !!successMessage}
+        >
+          {isProcessing ? "Processing..." : `Pay $${totalAmount.toFixed(2)}`}
+        </Button>
+      </div>
+    </form>
   );
 }

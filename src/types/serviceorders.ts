@@ -46,6 +46,7 @@ type Order = {
   mechanicLastName: string;
   currentUserId?: number | null;
   currentEmployeeId?: number | null;
+  paymentStatus?: string | null;
   task: Task[];
 };
 export type Task = {

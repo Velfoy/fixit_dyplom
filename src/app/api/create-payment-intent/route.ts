@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert dollars to cents
       currency: "usd",
-      automatic_payment_methods: { enabled: true },
+      payment_method_types: ["card"], // Only use card for development
     });
 
     return NextResponse.json({
