@@ -1095,6 +1095,15 @@ export function OrderDetailView({
         </Button>
         <div className="left_order">
           <span
+            className={`payment-status ${
+              serviceOrder?.paymentStatus === "PAID"
+                ? "payment-status--paid"
+                : "payment-status--unpaid"
+            }`}
+          >
+            {serviceOrder?.paymentStatus === "PAID" ? "Paid" : "Not Paid"}
+          </span>
+          <span
             role={isTerminalStatus(serviceOrder?.status) ? undefined : "button"}
             onClick={() => {
               if (
