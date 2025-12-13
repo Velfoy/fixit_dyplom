@@ -3,9 +3,13 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import "@/styles/auth.css";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +23,8 @@ export default function AuthPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+    setSuccess("");
 
     if (mode === "login") {
       const result = await signIn("credentials", {
@@ -28,18 +34,18 @@ export default function AuthPage() {
       });
 
       if (result?.ok) router.push("/redirect");
-      else alert("Invalid credentials");
+      else setError("Invalid email or password");
       return;
     }
 
     // REGISTER
     if (password !== repeatPassword) {
-      alert("Passwords do not match");
+      setError("Passwords do not match");
       return;
     }
 
     if (!firstName || !lastName || !phone) {
-      alert("Please fill in first name, last name and phone.");
+      setError("Please fill in all fields");
       return;
     }
 
@@ -58,90 +64,154 @@ export default function AuthPage() {
     const data = await res.json();
 
     if (res.ok) {
-      alert("Registration successful! You can now log in.");
-      setMode("login");
-      setEmail("");
-      setPassword("");
-      setRepeatPassword("");
-      setFirstName("");
-      setLastName("");
-      setPhone("");
+      setSuccess("Registration successful! You can now log in.");
+      setTimeout(() => {
+        setMode("login");
+        setEmail("");
+        setPassword("");
+        setRepeatPassword("");
+        setFirstName("");
+        setLastName("");
+        setPhone("");
+        setSuccess("");
+      }, 1500);
     } else {
-      alert(data.error || "Registration failed.");
-      console.log("Registration error:", data);
+      setError(data.error || "Registration failed.");
     }
   }
 
   return (
-    <main className="flex flex-col items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="flex flex-col w-72 gap-3">
-        <h1 className="text-xl font-semibold mb-2 text-center">
-          {mode === "login" ? "Login" : "Register"}
-        </h1>
-
-        {/* Common fields */}
-        <input
-          type="email"
-          placeholder="Email"
-          className="border p-2 rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          className="border p-2 rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {/* Register-only fields */}
-        {mode === "register" && (
-          <>
-            <input
-              type="password"
-              placeholder="Repeat password"
-              className="border p-2 rounded"
-              value={repeatPassword}
-              onChange={(e) => setRepeatPassword(e.target.value)}
+    <div className="auth-container">
+      <div className="auth-wrapper">
+        <div className="auth-content">
+          <div className="auth-brand">
+            <Image
+              src="/images/logo_white_text.png"
+              alt="FixIt"
+              width={100}
+              height={40}
             />
-            <input
-              type="text"
-              placeholder="First name"
-              className="border p-2 rounded"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Last name"
-              className="border p-2 rounded"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-            />
-            <input
-              type="tel"
-              placeholder="Phone number"
-              className="border p-2 rounded"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </>
-        )}
+          </div>
 
-        <button type="submit" className="bg-blue-600 text-white py-2 rounded">
-          {mode === "login" ? "Log in" : "Register"}
-        </button>
-      </form>
+          <h1 className="auth-title">
+            {mode === "login" ? "Welcome Back" : "Create Account"}
+          </h1>
+          <p className="auth-subtitle">
+            {mode === "login"
+              ? "Sign in to your account to access your orders and services"
+              : "Join us and manage your automotive services with ease"}
+          </p>
 
-      <button
-        className="mt-4 text-sm text-blue-500 underline"
-        onClick={() => setMode(mode === "login" ? "register" : "login")}
-      >
-        {mode === "login"
-          ? "Don't have an account? Register"
-          : "Already have an account? Log in"}
-      </button>
-    </main>
+          <form onSubmit={handleSubmit} className="auth-form">
+            {error && <div className="auth-error">{error}</div>}
+            {success && <div className="auth-success">{success}</div>}
+
+            {/* Email */}
+            <div className="auth-form-row full">
+              <input
+                type="email"
+                placeholder="Email address"
+                className="auth-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            {/* Password */}
+            <div className="auth-form-row full">
+              <input
+                type="password"
+                placeholder="Password"
+                className="auth-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            {/* Register-only fields */}
+            {mode === "register" && (
+              <>
+                <div className="auth-form-row full">
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    className="auth-input"
+                    value={repeatPassword}
+                    onChange={(e) => setRepeatPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="auth-form-row">
+                  <input
+                    type="text"
+                    placeholder="First name"
+                    className="auth-input"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last name"
+                    className="auth-input"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="auth-form-row full">
+                  <input
+                    type="tel"
+                    placeholder="Phone number"
+                    className="auth-input"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            <button type="submit" className="auth-submit">
+              {mode === "login" ? "Sign In" : "Create Account"}
+            </button>
+
+            <div className="auth-toggle">
+              <span className="auth-toggle-text">
+                {mode === "login"
+                  ? "Don't have an account? "
+                  : "Already have an account? "}
+              </span>
+              <button
+                type="button"
+                className="auth-toggle-button"
+                onClick={() => {
+                  setMode(mode === "login" ? "register" : "login");
+                  setError("");
+                  setSuccess("");
+                }}
+              >
+                {mode === "login" ? "Register" : "Sign In"}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div className="auth-illustration">
+          <div className="auth-illustration-content">
+            <div className="auth-illustration-icon">🔧</div>
+            <div className="auth-illustration-title">FixIt</div>
+            <div className="auth-illustration-text">
+              Manage your automotive repairs and maintenance in one place.
+              Quick, reliable, and professional service at your fingertips.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
