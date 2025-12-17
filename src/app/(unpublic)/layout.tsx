@@ -37,7 +37,11 @@ export default async function PrivateLayout({
                 <div className="username">Hello, {userName}</div>
               </div>
               <span className="date">{useFormattedDate()}</span>
-              <form action="/api/auth/signout?callbackUrl=/" method="post">
+              <form
+                className="form_logout"
+                action="/api/auth/signout?callbackUrl=/"
+                method="post"
+              >
                 <button className="logout-btn">
                   <span>Logout</span>
                 </button>

@@ -558,3 +558,24 @@
   background: linear-gradient(to right, #3b82f6, #60a5fa);
   border-radius: 6px;
 }
+
+@media (max-width: 768px) {
+  .customers-header {
+    margin-bottom: 10px;
+  }
+  .customers-header-text {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .customers-subtitle {
+    margin-top: 3px;
+  }
+  .parts-stats-grid {
+    gap: 8px;
+  }
+  .stats-card-inner {
+    padding: 8px 18px;
+  }
+}

@@ -14,7 +14,7 @@
 /* Main content area */
 .page-main {
   flex: 1;
-  padding: 0px 24px; /* like p-6 */
+  padding: 8px 16px;
   overflow: auto;
   background: #050509;
   color: #f9fafb;
@@ -25,9 +25,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 2rem;
-  padding: 20px 20px;
-  padding-bottom: 5px;
+  margin-bottom: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 10px 12px;
+  padding-right: 8px;
+  gap: 20px;
 }
 
 /* --- Search Box --- */
@@ -213,22 +215,24 @@
   left: 200%;
 }
 
-/* Responsive Design */
-/* Tablets (768px to 1024px) */
 @media (max-width: 1024px) {
   .topbar {
     flex-wrap: wrap;
-    gap: 12px;
-    padding: 16px;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 0.8rem;
   }
 
   .search-box {
-    max-width: 350px;
+    max-width: 100%;
+    flex: 1;
+    min-width: 200px;
   }
 
   .right-section {
-    gap: 12px;
+    gap: 10px;
     padding: 4px 10px;
+    flex-shrink: 0;
   }
 
   .user-info .username {
@@ -245,40 +249,54 @@
   }
 
   .page-main {
-    padding: 16px 16px;
+    padding: 10px 12px;
+    margin-top: 0.3rem;
   }
 }
 
-/* Mobile (640px to 768px) */
 @media (max-width: 768px) {
   .main-layout {
     flex-direction: column;
+  }
+  .dashboard-header {
+    text-align: center;
+    margin-bottom: 5px;
   }
 
   .topbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
-    padding: 12px;
-    margin-bottom: 1rem;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-right: 20px;
+    margin-bottom: 0.4rem;
+  }
+  .form_logout {
+    margin-left: auto;
   }
 
   .search-box {
     max-width: 100%;
     flex: 1;
+    padding: 8px 12px;
   }
 
   .right-section {
-    flex-wrap: wrap;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
+    padding: 6px 10px;
     background-color: #e5e7eb;
+    gap: 8px;
+    border-radius: 20px;
   }
 
   .user-box {
-    flex: 1;
-    min-width: 200px;
+    display: flex;
+    align-items: center;
     gap: 6px;
+    flex: 1;
   }
 
   .user-info .username {
@@ -293,49 +311,59 @@
   .logout-btn {
     padding: 6px 14px;
     font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .page-main {
-    padding: 12px;
+    padding: 10px 12px;
+    margin-top: 0.3rem;
   }
 }
 
-/* Small Mobile (480px to 640px) */
 @media (max-width: 640px) {
   .topbar {
     flex-direction: column;
-    gap: 10px;
-    padding: 10px;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 0.6rem;
   }
 
   .search-box {
     max-width: 100%;
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 12px;
+    width: 100%;
   }
 
   .right-section {
+    display: flex;
     flex-direction: row;
-    justify-content: space-between;
     align-items: center;
-    padding: 8px;
-    gap: 8px;
+    justify-content: space-between;
+    padding: 6px 8px;
+    gap: 6px;
+    border-radius: 20px;
   }
 
   .user-box {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     flex: 1;
-    gap: 4px;
-    min-width: auto;
+    min-width: 0;
   }
 
   .status-dot {
     width: 6px;
     height: 6px;
+    flex-shrink: 0;
   }
 
   .avatar {
     width: 28px;
     height: 28px;
+    flex-shrink: 0;
   }
 
   .avatar-icon {
@@ -345,29 +373,28 @@
 
   .user-info .username {
     font-size: 11px;
-  }
-
-  .logout-btn {
-    padding: 5px 12px;
-    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .page-main {
-    padding: 10px;
+    padding: 8px 10px;
+    margin-top: 0.3rem;
   }
 }
 
-/* Extra Small Mobile (up to 480px) */
 @media (max-width: 480px) {
   .topbar {
     gap: 8px;
-    padding: 8px;
-    margin-bottom: 0.5rem;
+    padding: 4px 8px;
+    margin-bottom: 0.6rem;
   }
 
   .search-box {
-    padding: 5px 10px;
+    padding: 6px 8px;
     font-size: 11px;
+    width: 100%;
   }
 
   .mic-icon {
@@ -376,23 +403,33 @@
   }
 
   .right-section {
-    flex-direction: column;
-    gap: 6px;
-    padding: 6px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 5px 6px;
+    border-radius: 18px;
   }
 
   .user-box {
-    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
   }
 
   .status-dot {
     width: 5px;
     height: 5px;
+    flex-shrink: 0;
   }
 
   .avatar {
     width: 24px;
     height: 24px;
+    flex-shrink: 0;
   }
 
   .avatar-icon {
@@ -402,15 +439,13 @@
 
   .user-info .username {
     font-size: 10px;
-  }
-
-  .logout-btn {
-    padding: 4px 10px;
-    font-size: 9px;
-    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .page-main {
-    padding: 8px;
+    padding: 8px 8px;
+    margin-top: 0.2rem;
   }
 }
