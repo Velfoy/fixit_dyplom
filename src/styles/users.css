@@ -187,6 +187,9 @@
   gap: 16px;
 }
 .mechanic-column {
+  min-width: 0;
+}
+.mechanic-column {
   display: flex;
   flex-direction: column;
   align-items: left;
@@ -475,6 +478,10 @@
   align-items: center;
   gap: 4px;
   text-align: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .terminate-actions {
   display: flex;
@@ -644,5 +651,104 @@
     width: 100%;
     display: flex;
     justify-content: space-evenly;
+  }
+
+  /* Mechanics: wrap header row and align actions */
+  .mechanic-row {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .mechanic-column {
+    padding: 12px;
+  }
+  .customer-actions {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .terminate-actions {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0;
+  }
+  .customer-actions + .terminate-actions {
+    margin-left: 8px;
+  }
+
+  /* Mechanics stats: 3 columns on tablets */
+  .mechanic-main {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+  .mechanic-info_1,
+  .mechanic-info_2,
+  .mechanic-info_3 {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Mechanics: tighter gaps and 2-column stats */
+  .mechanic-row {
+    gap: 10px;
+  }
+  .mechanic-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .mechanic-info_1,
+  .mechanic-info_2,
+  .mechanic-info_3 {
+    padding: 8px 10px;
+  }
+  .mechanic-meta-item {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .customer-actions,
+  .terminate-actions {
+    align-self: center;
+  }
+  .terminate-actions .icon-btn,
+  .customer-actions .icon-btn {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Mechanics: stack stats and right-align actions */
+  .mechanic-main {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .customer-actions {
+    width: auto; /* override earlier 100% width */
+    display: inline-flex; /* keep inline next to terminate */
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    margin-left: auto; /* push both actions to the right */
+  }
+  .terminate-actions {
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+  .customer-actions + .terminate-actions {
+    margin-left: 8px;
+  }
+  .terminate-actions .icon-btn {
+    padding: 6px 10px;
+  }
+  .customer-actions .icon-btn {
+    padding: 6px;
   }
 }
