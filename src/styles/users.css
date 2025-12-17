@@ -751,4 +751,8 @@
   .customer-actions .icon-btn {
     padding: 6px;
   }
+  .user-header {
+    display: flex;
+    flex-direction: column;
+  }
 }

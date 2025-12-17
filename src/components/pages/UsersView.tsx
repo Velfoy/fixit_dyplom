@@ -190,6 +190,7 @@ const UsersView: React.FC<UsersViewProps> = ({ session, dataUsers }) => {
           alignItems: "center",
           justifyContent: "space-between",
         }}
+        className="user-header"
       >
         <div className="customers-header-text">
           <h2 className="customers-title text-xl font-semibold">
