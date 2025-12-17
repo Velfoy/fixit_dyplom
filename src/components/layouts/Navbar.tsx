@@ -33,7 +33,7 @@ const Navbar: React.FC = () => {
         <div className="navbar-left">
           <Link href={logoHref} className="navbar-brand">
             <Image
-              src="/images/logo_white_text.png"
+              src="/images/logo_with_text_black1.png"
               alt="FixIt"
               width={90}
               className="navbar-brand-logo"
