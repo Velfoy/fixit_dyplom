@@ -19,7 +19,7 @@ export default function SignOutPage() {
   };
 
   return (
-    <div className="auth-container" style={{ minHeight: "83vh" }}>
+    <div className="auth-container v" style={{ minHeight: "83vh" }}>
       <div className="auth-wrapper">
         <div className="auth-content">
           <h1 className="auth-title">Sign Out</h1>
