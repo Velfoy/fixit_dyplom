@@ -13,7 +13,7 @@ Role-based workshop management platform built with Next.js 16, Prisma, and NextA
   [![Client demo](https://img.youtube.com/vi/Brmvh5GDzDM/0.jpg)](https://youtu.be/Brmvh5GDzDM)
 
 #### Admin
-  [![Admin demo](https://img.youtube.com/vi/7qiWTHk5Ht4/0.jpg)](https://youtu.be/7qiWTHk5Ht4)
+  [![Admin demo](https://img.youtube.com/vi/wlpSTByOFcY/0.jpg)](https://youtu.be/wlpSTByOFcY)
 
 ### Highlights
 
