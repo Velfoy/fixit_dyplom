@@ -4,22 +4,19 @@ Role-based workshop management platform built with Next.js 16, Prisma, and NextA
 
 ### Demo
 
+Each thumbnail opens the role demo on YouTube.
+
 - Warehouse
-<div align="center">
-	<iframe width="100%" height="480" src="https://www.youtube.com/embed/BeaRlvya7OA" title="FixIt demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-</div>
+  [![Warehouse demo](https://img.youtube.com/vi/BeaRlvya7OA/0.jpg)](https://youtu.be/BeaRlvya7OA)
+
 - Mechanic
-<div align="center">
-	<iframe width="100%" height="480" src="https://www.youtube.com/embed/xkfuUDAbLDA" title="FixIt demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-</div>
+  [![Mechanic demo](https://img.youtube.com/vi/xkfuUDAbLDA/0.jpg)](https://youtu.be/xkfuUDAbLDA)
+
 - Client
-<div align="center">
-	<iframe width="100%" height="480" src="https://www.youtube.com/embed/Brmvh5GDzDM" title="FixIt demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-</div>
+  [![Client demo](https://img.youtube.com/vi/Brmvh5GDzDM/0.jpg)](https://youtu.be/Brmvh5GDzDM)
+
 - Admin
-<div align="center">
-	<iframe width="100%" height="480" src="https://www.youtube.com/embed/7qiWTHk5Ht4" title="FixIt demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-</div>
+  [![Admin demo](https://img.youtube.com/vi/7qiWTHk5Ht4/0.jpg)](https://youtu.be/7qiWTHk5Ht4)
 
 ### Highlights
 
