@@ -243,8 +243,12 @@
   border: 1px solid transparent;
   cursor: pointer;
 
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease,
-    border-color 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.12s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 
   padding: 6px 18px;
 
@@ -270,8 +274,12 @@
   border: 1px solid transparent;
   cursor: pointer;
 
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease,
-    border-color 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.12s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 
   padding: 6px 18px;
 
@@ -446,7 +454,9 @@
   color: var(--text-main);
   background: #050815;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .filter-select:focus-visible {

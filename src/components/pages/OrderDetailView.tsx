@@ -636,12 +636,7 @@ export function OrderDetailView({
 
   async function handleAddItem(e: FormEvent) {
     e.preventDefault();
-    if (
-      !serviceOrder ||
-      itemCost <= 0 ||
-      !itemDescription.trim() ||
-      isPaid
-    )
+    if (!serviceOrder || itemCost <= 0 || !itemDescription.trim() || isPaid)
       return;
     setIsSubmitting(true);
 
@@ -2606,74 +2601,76 @@ export function OrderDetailView({
             {(session?.user?.role === "ADMIN" ||
               session?.user?.role === "MECHANIC") &&
               !commentsReadOnly && (
-              <div className="order-comment-form">
-                <h4 className="order-comment-title">✏️ Add Comment</h4>
-                <div className="order-upload-section">
-                  <Input
-                    placeholder="Comment title (optional)"
-                    value={commentTitle}
-                    onChange={(e) => setCommentTitle(e.target.value)}
-                    className="order-comment-input"
-                  />
-                  <textarea
-                    placeholder="Write your comment..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className="order-comment-textarea"
-                  />
-                </div>
-
-                <div className="order-upload-section">
-                  <label
-                    htmlFor="comment-file-upload"
-                    className={`order-upload-label ${
-                      uploadingFile ? "disabled" : ""
-                    }`}
-                    aria-disabled={uploadingFile}
-                  >
-                    {uploadingFile ? "Uploading..." : "Attach File/Video"}
-                  </label>
-                  <input
-                    id="comment-file-upload"
-                    type="file"
-                    accept="image/*,video/*,.pdf,.doc,.docx"
-                    onChange={handleFileUpload}
-                    disabled={uploadingFile}
-                    className="order-upload-input"
-                  />
-                  <p className="order-upload-note">
-                    Supported: Images, Videos, PDF, Word documents (Max 50MB)
-                  </p>
-                </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="order-uploaded-list">
-                    <p className="order-uploaded-list-title">Attached Files:</p>
-                    <div className="order-uploaded-items">
-                      {uploadedFiles.map((file) => (
-                        <div key={file.id} className="order-uploaded-item">
-                          <span>{file.filename}</span>
-                          <button
-                            onClick={() => removeUploadedFile(file.id)}
-                            className="order-uploaded-remove"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                <div className="order-comment-form">
+                  <h4 className="order-comment-title">✏️ Add Comment</h4>
+                  <div className="order-upload-section">
+                    <Input
+                      placeholder="Comment title (optional)"
+                      value={commentTitle}
+                      onChange={(e) => setCommentTitle(e.target.value)}
+                      className="order-comment-input"
+                    />
+                    <textarea
+                      placeholder="Write your comment..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      className="order-comment-textarea"
+                    />
                   </div>
-                )}
 
-                <Button
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim() || isSubmitting}
-                  className="dialog-btn dialog-btn--primary order-comment-submit"
-                >
-                  {isSubmitting ? "Adding..." : "Add Comment"}
-                </Button>
-              </div>
-            )}
+                  <div className="order-upload-section">
+                    <label
+                      htmlFor="comment-file-upload"
+                      className={`order-upload-label ${
+                        uploadingFile ? "disabled" : ""
+                      }`}
+                      aria-disabled={uploadingFile}
+                    >
+                      {uploadingFile ? "Uploading..." : "Attach File/Video"}
+                    </label>
+                    <input
+                      id="comment-file-upload"
+                      type="file"
+                      accept="image/*,video/*,.pdf,.doc,.docx"
+                      onChange={handleFileUpload}
+                      disabled={uploadingFile}
+                      className="order-upload-input"
+                    />
+                    <p className="order-upload-note">
+                      Supported: Images, Videos, PDF, Word documents (Max 50MB)
+                    </p>
+                  </div>
+
+                  {uploadedFiles.length > 0 && (
+                    <div className="order-uploaded-list">
+                      <p className="order-uploaded-list-title">
+                        Attached Files:
+                      </p>
+                      <div className="order-uploaded-items">
+                        {uploadedFiles.map((file) => (
+                          <div key={file.id} className="order-uploaded-item">
+                            <span>{file.filename}</span>
+                            <button
+                              onClick={() => removeUploadedFile(file.id)}
+                              className="order-uploaded-remove"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim() || isSubmitting}
+                    className="dialog-btn dialog-btn--primary order-comment-submit"
+                  >
+                    {isSubmitting ? "Adding..." : "Add Comment"}
+                  </Button>
+                </div>
+              )}
 
             <div>
               <h4 className="order-comments-heading">
