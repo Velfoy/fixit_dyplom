@@ -1,7 +1,8 @@
-import { NextAuthOptions } from "next-auth";
+import { NextAuthOptions, User, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { JWT } from "next-auth/jwt";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -30,39 +31,53 @@ export const authOptions: NextAuthOptions = {
         console.log("password valid:", valid);
         if (!valid) return null;
 
-        // 👇 Cast to any to safely access first_name / last_name if they exist
-        const u = user as any;
+        const u = user as typeof user & {
+          first_name?: string;
+          last_name?: string;
+          name?: string;
+        };
 
-        // Prefer first_name + last_name if present, otherwise fall back to name
         const fullName =
           [u.first_name, u.last_name].filter(Boolean).join(" ") ||
           u.name ||
           undefined;
 
         return {
-          id: String(user.id), // NextAuth expects string id
+          id: String(user.id),
           name: fullName,
           email: user.email,
           role: user.role,
-        } as any;
+        };
       },
     }),
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({
+      token,
+      user,
+    }: {
+      token: JWT;
+      user?: User & { role?: string };
+    }) {
       if (user) {
-        (token as any).role = (user as any).role;
-        (token as any).id = (user as any).id;
+        token.role = user.role;
+        token.id = user.id;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({
+      session,
+      token,
+    }: {
+      session: Session;
+      token: JWT & { role?: string; id?: string };
+    }) {
       session.user = {
         ...session.user,
-        role: (token as any).role,
-        id: (token as any).id,
-      } as any;
+        role: token.role,
+        id: token.id,
+      };
       return session;
     },
   },

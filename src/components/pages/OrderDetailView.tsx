@@ -595,6 +595,9 @@ export function OrderDetailView({
   const isTerminalStatus = (s?: string) =>
     s === "COMPLETED" || s === "CANCELLED";
 
+  const commentsReadOnly = isTerminalStatus(serviceOrder?.status);
+  const isPaid = serviceOrder?.paymentStatus === "PAID";
+
   async function handleSetOrderStatus(newStatus: "COMPLETED" | "CANCELLED") {
     if (!serviceOrder) return;
     setIsSubmitting(true);
@@ -633,7 +636,13 @@ export function OrderDetailView({
 
   async function handleAddItem(e: FormEvent) {
     e.preventDefault();
-    if (!serviceOrder || itemCost <= 0 || !itemDescription.trim()) return;
+    if (
+      !serviceOrder ||
+      itemCost <= 0 ||
+      !itemDescription.trim() ||
+      isPaid
+    )
+      return;
     setIsSubmitting(true);
 
     try {
@@ -973,7 +982,7 @@ export function OrderDetailView({
   };
 
   async function handleDeleteComment(commentId: number) {
-    if (!serviceOrder?.id || !selectedTask) return;
+    if (!serviceOrder?.id || !selectedTask || commentsReadOnly) return;
     if (!confirm("Czy na pewno chcesz usunąć ten komentarz?")) return;
 
     setDeletingCommentId(commentId);
@@ -1001,7 +1010,13 @@ export function OrderDetailView({
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!e.target.files || !selectedTask || !serviceOrder?.id) return;
+    if (
+      !e.target.files ||
+      !selectedTask ||
+      !serviceOrder?.id ||
+      commentsReadOnly
+    )
+      return;
 
     const file = e.target.files[0];
     if (!file) return;
@@ -1037,11 +1052,18 @@ export function OrderDetailView({
   }
 
   function removeUploadedFile(fileId: number) {
+    if (commentsReadOnly) return;
     setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
   }
 
   async function handleAddComment() {
-    if (!selectedTask || !serviceOrder?.id || !newComment.trim()) return;
+    if (
+      !selectedTask ||
+      !serviceOrder?.id ||
+      !newComment.trim() ||
+      commentsReadOnly
+    )
+      return;
 
     setIsSubmitting(true);
     try {
@@ -1363,62 +1385,60 @@ export function OrderDetailView({
                       </span>
                     </div>
                   </div>
-                  {isTerminalStatus(serviceOrder?.status) ? null : (
-                    <div className="customer-actions">
-                      <button
-                        className="icon-btn icon-btn--edit"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openTaskComments(task);
-                        }}
-                        title="View Comments"
-                      >
-                        <Mail className="icon-xxx" />
-                      </button>
-                      {session?.user?.role === "ADMIN" && (
-                        <button
-                          className="icon-btn icon-btn--edit"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isTerminalStatus(serviceOrder?.status))
+                  <div className="customer-actions">
+                    <button
+                      className="icon-btn icon-btn--edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openTaskComments(task);
+                      }}
+                      title="View Comments"
+                    >
+                      <Mail className="icon-xxx" />
+                    </button>
+                    {!isTerminalStatus(serviceOrder?.status) && (
+                      <>
+                        {session?.user?.role === "ADMIN" && (
+                          <button
+                            className="icon-btn icon-btn--edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               openEditTask(task);
-                          }}
-                          disabled={isTerminalStatus(serviceOrder?.status)}
-                        >
-                          <Pencil className="icon-xxx" />
-                        </button>
-                      )}
+                            }}
+                          >
+                            <Pencil className="icon-xxx" />
+                          </button>
+                        )}
 
-                      {session?.user?.role === "MECHANIC" && (
-                        <span
-                          role="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTaskToChangeStatus(task);
-                            setShowTaskStatusDialog(true);
-                          }}
-                          className={`${
-                            STATUS_MAP[task.status || "NEW"].className
-                          } order-status-pill order-status-pill--clickable`}
-                        >
-                          {STATUS_MAP[task.status || "NEW"].label}
-                        </span>
-                      )}
-                      {session?.user?.role !== "CLIENT" && (
-                        <button
-                          className="icon-btn icon-btn--edit"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isTerminalStatus(serviceOrder?.status))
+                        {session?.user?.role === "MECHANIC" && (
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTaskToChangeStatus(task);
+                              setShowTaskStatusDialog(true);
+                            }}
+                            className={`${
+                              STATUS_MAP[task.status || "NEW"].className
+                            } order-status-pill order-status-pill--clickable`}
+                          >
+                            {STATUS_MAP[task.status || "NEW"].label}
+                          </span>
+                        )}
+                        {session?.user?.role !== "CLIENT" && (
+                          <button
+                            className="icon-btn icon-btn--edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               openDeleteConfirm(task);
-                          }}
-                          disabled={isTerminalStatus(serviceOrder?.status)}
-                        >
-                          <Trash className="icon-xxx" />
-                        </button>
-                      )}
-                    </div>
-                  )}
+                            }}
+                          >
+                            <Trash className="icon-xxx" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -1626,8 +1646,11 @@ export function OrderDetailView({
                     </Button>
                   )} */}
                   <Button
-                    onClick={() => setShowAddItem(true)}
+                    onClick={() => {
+                      if (!isPaid) setShowAddItem(true);
+                    }}
                     className="edit-button_trans"
+                    disabled={isPaid}
                   >
                     <Plus className="icon-xxx" />
                     <span>Add Item</span>
@@ -1659,46 +1682,48 @@ export function OrderDetailView({
                             ${Number(item.cost || 0).toFixed(2)}
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              className="transaction-delete-btn"
-                              onClick={async () => {
-                                if (!serviceOrder) return;
-                                try {
-                                  console.log("Deleting item:", item.id);
+                            {!isPaid && (
+                              <button
+                                type="button"
+                                className="transaction-delete-btn"
+                                onClick={async () => {
+                                  if (!serviceOrder || isPaid) return;
+                                  try {
+                                    console.log("Deleting item:", item.id);
 
-                                  const res = await fetch(
-                                    `/api/orders/${serviceOrder.id}/items/${item.id}`,
-                                    { method: "DELETE" },
-                                  );
+                                    const res = await fetch(
+                                      `/api/orders/${serviceOrder.id}/items/${item.id}`,
+                                      { method: "DELETE" },
+                                    );
 
-                                  if (!res.ok) {
-                                    const errorText = await res.text();
-                                    console.error(
-                                      "Delete API Error:",
-                                      errorText,
+                                    if (!res.ok) {
+                                      const errorText = await res.text();
+                                      console.error(
+                                        "Delete API Error:",
+                                        errorText,
+                                      );
+                                      throw new Error(
+                                        `API returned ${res.status}`,
+                                      );
+                                    }
+
+                                    const response = await res.json();
+                                    console.log("Delete response:", response);
+
+                                    setInvoiceItems((prev) =>
+                                      prev.filter((i) => i.id !== item.id),
                                     );
-                                    throw new Error(
-                                      `API returned ${res.status}`,
-                                    );
+
+                                    console.log("Item deleted successfully");
+                                  } catch (err) {
+                                    console.error("Delete error:", err);
+                                    alert("Failed to delete item");
                                   }
-
-                                  const response = await res.json();
-                                  console.log("Delete response:", response);
-
-                                  setInvoiceItems((prev) =>
-                                    prev.filter((i) => i.id !== item.id),
-                                  );
-
-                                  console.log("Item deleted successfully");
-                                } catch (err) {
-                                  console.error("Delete error:", err);
-                                  alert("Failed to delete item");
-                                }
-                              }}
-                            >
-                              <Trash className="icon-xxx" />
-                            </button>
+                                }}
+                              >
+                                <Trash className="icon-xxx" />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -2579,7 +2604,8 @@ export function OrderDetailView({
           </DialogHeader>
           <div className="dialog-body order-comments-body">
             {(session?.user?.role === "ADMIN" ||
-              session?.user?.role === "MECHANIC") && (
+              session?.user?.role === "MECHANIC") &&
+              !commentsReadOnly && (
               <div className="order-comment-form">
                 <h4 className="order-comment-title">✏️ Add Comment</h4>
                 <div className="order-upload-section">
@@ -2657,9 +2683,9 @@ export function OrderDetailView({
                 <p className="order-comments-loading">Loading comments...</p>
               ) : taskComments.length === 0 ? (
                 <p className="order-comments-empty">
-                  {session?.user?.role !== "CLIENT"
-                    ? "No comments yet. Be the first to add one!"
-                    : "No comments available for this task."}
+                  {commentsReadOnly || session?.user?.role === "CLIENT"
+                    ? "No comments available for this task."
+                    : "No comments yet. Be the first to add one!"}
                 </p>
               ) : (
                 <div className="order-comments-list">
@@ -2720,7 +2746,7 @@ export function OrderDetailView({
                             </div>
                           </div>
 
-                          {isCommentOwner(comment) && (
+                          {isCommentOwner(comment) && !commentsReadOnly && (
                             <button
                               onClick={() => handleDeleteComment(comment.id)}
                               disabled={deletingCommentId === comment.id}

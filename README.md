@@ -169,8 +169,140 @@ In the practical part, a web application supporting automotive workshop manageme
 - Prisma (prisma.prisma)
 - Thunder Client (rangav.vscode-thunder-client)
 - ESLint (dbaeumer.vscode-eslint)
-- TypeScript Vue Plugin (Vue.volar)
-- Tailwind CSS IntelliSense (bradlc.vscode-tailwindcss)
+- DotENV (mikestead.dotenv)
+
+### VS Code Setup (Fresh Install)
+
+#### 📦 Essential Extensions (Must Install)
+
+**Core Development:**
+1. **Prisma** (`Prisma.prisma`)
+   - Syntax highlighting for `.prisma` files
+   - Auto-completion for Prisma schema
+   - Format on save support
+
+2. **ESLint** (`dbaeumer.vscode-eslint`)
+   - JavaScript/TypeScript code quality
+   - Auto-fix on save
+   - Required for Next.js development
+
+3. **TypeScript and JavaScript Language Features** (built-in)
+   - Usually pre-installed with VS Code
+   - IntelliSense, type checking, refactoring
+
+**Productivity:**
+4. **Thunder Client** (`rangav.vscode-thunder-client`) *or* **REST Client** (`humao.rest-client`)
+   - Test API endpoints without leaving VS Code
+   - Alternative to Postman
+
+5. **GitLens** (`eamodio.gitlens`) *(optional but recommended)*
+   - Git blame, history, and authorship
+   - Visual file history
+
+6. **Error Lens** (`usernamehm.errorlens`) *(optional)*
+   - Inline error/warning display
+   - Faster debugging
+
+**File Support:**
+7. **DotENV** (`mikestead.dotenv`)
+   - Syntax highlighting for `.env` files
+   - Important for environment variables
+
+8. **CSS Peek** (`pranaygp.vscode-css-peek`) *(optional)*
+   - Jump to CSS class definitions
+   - Useful for custom CSS files
+
+#### 🔧 VS Code Settings Configuration
+
+Create `.vscode/settings.json` in project root:
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  },
+  "[typescript]": {
+    "editor.tabSize": 2
+  },
+  "[typescriptreact]": {
+    "editor.tabSize": 2
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "files.associations": {
+    "*.css": "css"
+  },
+  "css.validate": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ]
+}
+```
+
+#### 🚀 Quick Install Commands
+
+**Option 1: Install via VS Code UI**
+1. Press `Ctrl+Shift+X` (Windows/Linux) or `Cmd+Shift+X` (macOS)
+2. Search extension name
+3. Click "Install"
+
+**Option 2: Install via Terminal**
+```bash
+# Essential extensions
+code --install-extension Prisma.prisma
+code --install-extension dbaeumer.vscode-eslint
+code --install-extension rangav.vscode-thunder-client
+code --install-extension mikestead.dotenv
+
+# Optional but useful
+code --install-extension eamodio.gitlens
+code --install-extension usernamehm.errorlens
+code --install-extension pranaygp.vscode-css-peek
+```
+
+#### 📋 Complete Setup Checklist
+
+- [ ] Install Visual Studio Code
+- [ ] Install Node.js 20+
+- [ ] Install PostgreSQL
+- [ ] Install Git (optional)
+- [ ] Install VS Code extensions (see above)
+- [ ] Clone/download project
+- [ ] Run `npm install`
+- [ ] Create `.env.local` file
+- [ ] Configure database connection
+- [ ] Run `npx prisma generate`
+- [ ] Run `npx prisma migrate dev`
+- [ ] Create `.vscode/settings.json` (optional)
+- [ ] Run `npm run dev`
+- [ ] Open http://localhost:3000
+
+#### 🎨 VS Code Theme (Optional)
+
+Recommended themes for better contrast:
+- **Dark**: "One Dark Pro" or "Dracula Official"
+- **Light**: "GitHub Light" or "Atom One Light"
+
+Install: `Ctrl+Shift+X` → search "One Dark Pro" → Install
+
+#### ⌨️ Useful VS Code Shortcuts
+
+| Action | Windows/Linux | macOS |
+|--------|--------------|-------|
+| Quick Open File | `Ctrl+P` | `Cmd+P` |
+| Command Palette | `Ctrl+Shift+P` | `Cmd+Shift+P` |
+| Toggle Terminal | `Ctrl+`` | `Cmd+`` |
+| Find in Files | `Ctrl+Shift+F` | `Cmd+Shift+F` |
+| Go to Definition | `F12` | `F12` |
+| Format Document | `Shift+Alt+F` | `Shift+Option+F` |
+| Multi-cursor | `Alt+Click` | `Option+Click` |
 
 ### Project Layout
 

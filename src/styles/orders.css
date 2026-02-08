@@ -285,6 +285,16 @@
   background: #470202;
   transform: translateY(-2px);
 }
+.edit-button_trans:disabled,
+.edit-button_trans[disabled] {
+  background: #6b7280;
+  border-color: #6b7280;
+  color: #e5e7eb;
+  cursor: not-allowed;
+  opacity: 0.8;
+  transform: none;
+  box-shadow: none;
+}
 .icon-xxx {
   height: 18px;
 }
