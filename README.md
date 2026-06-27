@@ -2,8 +2,6 @@
 
 Role-based workshop management platform built with Next.js 16, Prisma, and NextAuth. It covers the full service lifecycle: intake, tasking, parts, invoicing, payments, and customer communication across multiple branches.
 
-**📖 For AI Assistant**: See [CONTEXT_FOR_AI.md](CONTEXT_FOR_AI.md) for project context when continuing work in a new chat.
-
 ---
 
 ### 1.2. Summary of Diploma
